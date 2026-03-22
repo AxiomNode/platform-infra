@@ -1,0 +1,22 @@
+name: Validate Infra
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate-layout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify infra folders
+        run: |
+          test -d terraform
+          test -d kubernetes/base
+          test -d environments/dev
+          test -d environments/stg
+          test -d environments/prod
