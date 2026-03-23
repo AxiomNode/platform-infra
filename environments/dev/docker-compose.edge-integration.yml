@@ -1,0 +1,46 @@
+services:
+  api-gateway:
+    container_name: api_gateway_edge_dev
+    build:
+      context: ../../../
+      dockerfile: api-gateway/src/Dockerfile.edge
+    env_file:
+      - ../../../api-gateway/src/.env
+      - ../../../api-gateway/src/.env.secrets
+    environment:
+      BFF_MOBILE_URL: http://bff-mobile:7010
+      BFF_BACKOFFICE_URL: http://bff-backoffice:7011
+    depends_on:
+      - bff-mobile
+      - bff-backoffice
+    ports:
+      - "7005:7005"
+
+  bff-mobile:
+    container_name: bff_mobile_edge_dev
+    build:
+      context: ../../../
+      dockerfile: bff-mobile/src/Dockerfile.edge
+    env_file:
+      - ../../../bff-mobile/src/.env
+    environment:
+      QUIZZ_SERVICE_URL: http://host.docker.internal:7100
+      WORDPASS_SERVICE_URL: http://host.docker.internal:7101
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "7010:7010"
+
+  bff-backoffice:
+    container_name: bff_backoffice_edge_dev
+    build:
+      context: ../../../
+      dockerfile: bff-backoffice/src/Dockerfile.edge
+    env_file:
+      - ../../../bff-backoffice/src/.env
+    environment:
+      USERS_SERVICE_URL: http://host.docker.internal:7102
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "7011:7011"
