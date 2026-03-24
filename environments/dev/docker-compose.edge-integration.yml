@@ -1,4 +1,16 @@
 services:
+  backoffice:
+    container_name: backoffice_dev
+    build:
+      context: ../../../
+      dockerfile: backoffice/Dockerfile
+    env_file:
+      - ../../../backoffice/.env.secrets
+    depends_on:
+      - api-gateway
+    ports:
+      - "7080:80"
+
   api-gateway:
     container_name: api_gateway_edge_dev
     build:
