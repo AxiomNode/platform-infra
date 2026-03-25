@@ -53,6 +53,13 @@ services:
       - ../../../bff-backoffice/src/.env
     environment:
       USERS_SERVICE_URL: http://host.docker.internal:7102
+      QUIZZ_SERVICE_URL: http://host.docker.internal:7100
+      WORDPASS_SERVICE_URL: http://host.docker.internal:7101
+      BFF_MOBILE_URL: http://bff-mobile:7010
+      API_GATEWAY_URL: http://api-gateway:7005
+      AI_ENGINE_STATS_URL: http://host.docker.internal:7000
+      AI_ENGINE_API_URL: http://host.docker.internal:7001
+      METRICS_LOG_BUFFER_SIZE: 1000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
