@@ -59,6 +59,8 @@ services:
       API_GATEWAY_URL: http://api-gateway:7005
       AI_ENGINE_STATS_URL: http://host.docker.internal:7000
       AI_ENGINE_API_URL: http://host.docker.internal:7001
+      AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
+      AI_ENGINE_API_KEY: dev_api_test_key_2026
       METRICS_LOG_BUFFER_SIZE: 1000
     extra_hosts:
       - "host.docker.internal:host-gateway"
