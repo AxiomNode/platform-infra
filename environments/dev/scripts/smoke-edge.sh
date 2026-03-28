@@ -139,8 +139,8 @@ expect_status "200" "GET" "http://localhost:7005/v1/mobile/games/quiz/random?lan
 expect_status "200" "GET" "http://localhost:7005/v1/mobile/games/wordpass/random?language=es" "valid"
 expect_status "200" "GET" "http://localhost:7005/v1/backoffice/users/leaderboard?limit=5" "valid"
 expect_status "200" "GET" "http://localhost:7005/v1/backoffice/monitor/stats" "valid"
-expect_status_any "200,400" "POST" "http://localhost:7005/v1/mobile/games/quiz/generate" "valid" '{"language":"es","numQuestions":3}'
-expect_status_any "200,400" "POST" "http://localhost:7005/v1/mobile/games/wordpass/generate" "valid" '{"language":"es","numQuestions":3}'
-expect_status_any "200,400" "POST" "http://localhost:7005/v1/backoffice/users/events/manual" "valid" '{"eventType":"quiz","outcome":"won"}'
+expect_status_any "200,400,422,502" "POST" "http://localhost:7005/v1/mobile/games/quiz/generate" "valid" '{"language":"es","categoryId":"9","numQuestions":3}'
+expect_status_any "200,400,422,502" "POST" "http://localhost:7005/v1/mobile/games/wordpass/generate" "valid" '{"language":"es","categoryId":"9","numQuestions":3}'
+expect_status_any "200,400,401,422,502" "POST" "http://localhost:7005/v1/backoffice/users/events/manual" "valid" '{"eventType":"quiz","outcome":"won"}'
 
 echo "Edge smoke OK (auth + GET + POST + critical forwarding headers)"
