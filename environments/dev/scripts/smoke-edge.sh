@@ -57,6 +57,10 @@ if [[ -z "$EDGE_API_TOKEN" ]]; then
   exit 1
 fi
 
+FORWARD_CORRELATION_ID="smoke-corr-$(date +%s)"
+FORWARD_FIREBASE_TOKEN="smoke-firebase-token"
+FORWARD_API_KEY="smoke-client-api-key"
+
 expect_status() {
   local expected="$1"
   local method="$2"
@@ -69,11 +73,17 @@ expect_status() {
     auth_header=(-H "Authorization: Bearer $EDGE_API_TOKEN")
   fi
 
+  local forwarded_headers=(
+    -H "x-correlation-id: $FORWARD_CORRELATION_ID"
+    -H "x-firebase-id-token: $FORWARD_FIREBASE_TOKEN"
+    -H "x-api-key: $FORWARD_API_KEY"
+  )
+
   local code
   if [[ -n "$body" ]]; then
-    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" -H "Content-Type: application/json" -d "$body" "$url")"
+    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "${forwarded_headers[@]}" -H "Content-Type: application/json" -d "$body" "$url")"
   else
-    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "$url")"
+    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "${forwarded_headers[@]}" "$url")"
   fi
 
   if [[ "$code" != "$expected" ]]; then
@@ -94,11 +104,17 @@ expect_status_any() {
     auth_header=(-H "Authorization: Bearer $EDGE_API_TOKEN")
   fi
 
+  local forwarded_headers=(
+    -H "x-correlation-id: $FORWARD_CORRELATION_ID"
+    -H "x-firebase-id-token: $FORWARD_FIREBASE_TOKEN"
+    -H "x-api-key: $FORWARD_API_KEY"
+  )
+
   local code
   if [[ -n "$body" ]]; then
-    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" -H "Content-Type: application/json" -d "$body" "$url")"
+    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "${forwarded_headers[@]}" -H "Content-Type: application/json" -d "$body" "$url")"
   else
-    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "$url")"
+    code="$(curl -sS -o /dev/null -w "%{http_code}" -X "$method" "${auth_header[@]}" "${forwarded_headers[@]}" "$url")"
   fi
 
   IFS=',' read -r -a expected_list <<< "$expected_csv"
@@ -125,5 +141,6 @@ expect_status "200" "GET" "http://localhost:7005/v1/backoffice/users/leaderboard
 expect_status "200" "GET" "http://localhost:7005/v1/backoffice/monitor/stats" "valid"
 expect_status_any "200,400" "POST" "http://localhost:7005/v1/mobile/games/quiz/generate" "valid" '{"language":"es","numQuestions":3}'
 expect_status_any "200,400" "POST" "http://localhost:7005/v1/mobile/games/wordpass/generate" "valid" '{"language":"es","numQuestions":3}'
+expect_status_any "200,400" "POST" "http://localhost:7005/v1/backoffice/users/events/manual" "valid" '{"eventType":"quiz","outcome":"won"}'
 
-echo "Edge smoke OK (auth + GET + POST)"
+echo "Edge smoke OK (auth + GET + POST + critical forwarding headers)"
