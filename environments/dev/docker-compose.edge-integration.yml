@@ -1,18 +1,32 @@
 services:
   backoffice:
-    container_name: backoffice_dev
+    image: "backoffice_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    container_name: "backoffice_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    restart: unless-stopped
     build:
       context: ../../../
       dockerfile: backoffice/Dockerfile
     env_file:
       - ../../../backoffice/.env.secrets
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
     ports:
       - "7080:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: "0.25"
 
   api-gateway:
-    container_name: api_gateway_edge_dev
+    image: "api_gateway_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    container_name: "api_gateway_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    restart: unless-stopped
     build:
       context: ../../../
       dockerfile: api-gateway/src/Dockerfile.edge
@@ -23,14 +37,28 @@ services:
       ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:7080
       BFF_MOBILE_URL: http://bff-mobile:7010
       BFF_BACKOFFICE_URL: http://bff-backoffice:7011
+      UPSTREAM_GENERATION_TIMEOUT_MS: 300000
     depends_on:
-      - bff-mobile
-      - bff-backoffice
+      bff-mobile:
+        condition: service_healthy
+      bff-backoffice:
+        condition: service_healthy
     ports:
       - "7005:7005"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: "0.5"
 
   bff-mobile:
-    container_name: bff_mobile_edge_dev
+    image: "bff_mobile_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    container_name: "bff_mobile_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    restart: unless-stopped
     build:
       context: ../../../
       dockerfile: bff-mobile/src/Dockerfile.edge
@@ -39,18 +67,31 @@ services:
     environment:
       QUIZZ_SERVICE_URL: http://host.docker.internal:7100
       WORDPASS_SERVICE_URL: http://host.docker.internal:7101
+      UPSTREAM_GENERATION_TIMEOUT_MS: 300000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "7010:7010"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7010/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: "0.5"
 
   bff-backoffice:
-    container_name: bff_backoffice_edge_dev
+    image: "bff_backoffice_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    container_name: "bff_backoffice_edge_${DISTRIBUTION:-dev}_${RELEASE_VERSION:-v1}"
+    restart: unless-stopped
     build:
       context: ../../../
       dockerfile: bff-backoffice/src/Dockerfile.edge
     env_file:
       - ../../../bff-backoffice/src/.env
+      - ../../../bff-backoffice/src/.env.secrets
     environment:
       USERS_SERVICE_URL: http://host.docker.internal:7102
       QUIZZ_SERVICE_URL: http://host.docker.internal:7100
@@ -59,10 +100,17 @@ services:
       API_GATEWAY_URL: http://api-gateway:7005
       AI_ENGINE_STATS_URL: http://host.docker.internal:7000
       AI_ENGINE_API_URL: http://host.docker.internal:7001
-      AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
-      AI_ENGINE_API_KEY: dev_api_test_key_2026
       METRICS_LOG_BUFFER_SIZE: 1000
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "7011:7011"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7011/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpus: "0.5"
