@@ -8,8 +8,7 @@ metadata:
     app.kubernetes.io/part-of: axiomnode
 spec:
   accessModes:
-    - ReadOnlyMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
-  storageClassName: ""
