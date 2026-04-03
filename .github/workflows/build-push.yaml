@@ -42,6 +42,13 @@ jobs:
       - id: changes
         name: Detect changed services
         run: |
+          ALL_SERVICES='["ai-engine-api","ai-engine-stats","microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice","backoffice"]'
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.service }}" == "all" ]]; then
+            echo "services=${ALL_SERVICES}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.service }}" != "all" ]]; then
             echo "services=[\"${{ inputs.service }}\"]" >> "$GITHUB_OUTPUT"
             exit 0
@@ -101,10 +108,23 @@ jobs:
           TAG="${GITHUB_SHA::8}"
           BRANCH="${GITHUB_REF_NAME}"
 
+          declare -A IMAGE_NAME_MAP=(
+            ["ai-engine-api"]="ai-engine-api"
+            ["ai-engine-stats"]="ai-engine-stats"
+            ["microservice-quizz"]="microservice-quizz-api"
+            ["microservice-wordpass"]="microservice-wordpass-api"
+            ["microservice-users"]="microservice-users-api"
+            ["api-gateway"]="api-gateway"
+            ["bff-mobile"]="bff-mobile"
+            ["bff-backoffice"]="bff-backoffice"
+            ["backoffice"]="backoffice"
+          )
+          IMAGE_NAME="${IMAGE_NAME_MAP[${{ matrix.service }}]}"
+
           if [[ "$BRANCH" == "main" ]]; then
-            TAGS="${REGISTRY}/${REGISTRY_ORG}/${{ matrix.service }}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${{ matrix.service }}:latest"
+            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest"
           else
-            TAGS="${REGISTRY}/${REGISTRY_ORG}/${{ matrix.service }}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${{ matrix.service }}:dev"
+            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
           fi
 
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
