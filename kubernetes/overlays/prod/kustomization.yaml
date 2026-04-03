@@ -8,6 +8,7 @@ resources:
   - ingress.yaml
   - hpa.yaml
   - pdb.yaml
+  - sealed-secrets
 
 patches:
   - path: patches/replicas.yaml

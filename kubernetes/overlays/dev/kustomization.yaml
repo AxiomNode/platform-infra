@@ -6,6 +6,7 @@ namespace: axiomnode-dev
 resources:
   - ../../base
   - ingress.yaml
+  - sealed-secrets
 
 patches:
   - path: patches/ai-engine-resources.yaml

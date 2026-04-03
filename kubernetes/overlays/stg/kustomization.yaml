@@ -6,6 +6,7 @@ namespace: axiomnode-stg
 resources:
   - ../../base
   - ingress.yaml
+  - sealed-secrets
 
 patches:
   - path: patches/replicas.yaml

@@ -8,6 +8,7 @@ ENV="${1:?Usage: $0 <dev|stg|prod> [secrets-file]}"
 SECRETS_FILE="${2:-secrets/${ENV}.env}"
 NAMESPACE="axiomnode-${ENV}"
 KUBECTL="kubectl"
+OUTPUT_DIR="kubernetes/overlays/${ENV}/sealed-secrets"
 
 # Use k3s kubectl if on VPS
 if command -v k3s &>/dev/null; then
@@ -28,6 +29,9 @@ if [[ ! -f "$SECRETS_FILE" ]]; then
 fi
 
 echo "=== Sealing secrets for ${ENV} (namespace: ${NAMESPACE}) ==="
+
+mkdir -p "$OUTPUT_DIR"
+generated_files=()
 
 # Source the secrets file
 set -a
@@ -64,7 +68,8 @@ for svc in quizz wordpass users; do
     --from-literal="database-url=${DATABASE_URL}" \
     --dry-run=client -o yaml | \
     kubeseal --format yaml --cert sealed-secrets-cert.pem \
-    > "kubernetes/overlays/${ENV}/sealed-secrets/${svc}-db-secret.yaml"
+    > "${OUTPUT_DIR}/${svc}-db-secret.yaml"
+  generated_files+=("${svc}-db-secret.yaml")
 done
 
 # --- Firebase credentials (users service) ---
@@ -75,9 +80,20 @@ if [[ -n "${FIREBASE_CREDENTIALS_FILE:-}" ]] && [[ -f "$FIREBASE_CREDENTIALS_FIL
     --from-file="firebase-credentials.json=${FIREBASE_CREDENTIALS_FILE}" \
     --dry-run=client -o yaml | \
     kubeseal --format yaml --cert sealed-secrets-cert.pem \
-    > "kubernetes/overlays/${ENV}/sealed-secrets/firebase-credentials.yaml"
+    > "${OUTPUT_DIR}/firebase-credentials.yaml"
+  generated_files+=("firebase-credentials.yaml")
 fi
 
+{
+  echo "apiVersion: kustomize.config.k8s.io/v1beta1"
+  echo "kind: Kustomization"
+  echo ""
+  echo "resources:"
+  for file in "${generated_files[@]}"; do
+    echo "  - ${file}"
+  done
+} > "${OUTPUT_DIR}/kustomization.yaml"
+
 echo ""
-echo "Sealed secrets written to kubernetes/overlays/${ENV}/sealed-secrets/"
-echo "Add them as resources in the overlay kustomization.yaml"
+echo "Sealed secrets written to ${OUTPUT_DIR}/"
+echo "Kustomization generated: ${OUTPUT_DIR}/kustomization.yaml"
