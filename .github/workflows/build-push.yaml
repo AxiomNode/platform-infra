@@ -108,6 +108,18 @@ jobs:
           TAG="${GITHUB_SHA::8}"
           BRANCH="${GITHUB_REF_NAME}"
 
+          declare -A REPO_MAP=(
+            ["ai-engine-api"]="ai-engine"
+            ["ai-engine-stats"]="ai-engine"
+            ["microservice-quizz"]="microservice-quizz"
+            ["microservice-wordpass"]="microservice-wordpass"
+            ["microservice-users"]="microservice-users"
+            ["api-gateway"]="api-gateway"
+            ["bff-mobile"]="bff-mobile"
+            ["bff-backoffice"]="bff-backoffice"
+            ["backoffice"]="backoffice"
+          )
+
           declare -A IMAGE_NAME_MAP=(
             ["ai-engine-api"]="ai-engine-api"
             ["ai-engine-stats"]="ai-engine-stats"
@@ -119,7 +131,9 @@ jobs:
             ["bff-backoffice"]="bff-backoffice"
             ["backoffice"]="backoffice"
           )
+
           IMAGE_NAME="${IMAGE_NAME_MAP[${{ matrix.service }}]}"
+          REPO_NAME="${REPO_MAP[${{ matrix.service }}]}"
 
           if [[ "$BRANCH" == "main" ]]; then
             TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest"
@@ -128,18 +142,19 @@ jobs:
           fi
 
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "repo=${REPO_NAME}" >> "$GITHUB_OUTPUT"
 
           # Determine build context and target
           declare -A CONTEXT_MAP=(
-            ["ai-engine-api"]="ai-engine/src"
-            ["ai-engine-stats"]="ai-engine/src"
-            ["microservice-quizz"]="microservice-quizz"
-            ["microservice-wordpass"]="microservice-wordpass"
-            ["microservice-users"]="microservice-users"
-            ["api-gateway"]="api-gateway"
-            ["bff-mobile"]="bff-mobile"
-            ["bff-backoffice"]="bff-backoffice"
-            ["backoffice"]="backoffice"
+            ["ai-engine-api"]="source/ai-engine/src"
+            ["ai-engine-stats"]="source/ai-engine/src"
+            ["microservice-quizz"]="source/microservice-quizz"
+            ["microservice-wordpass"]="source/microservice-wordpass"
+            ["microservice-users"]="source/microservice-users"
+            ["api-gateway"]="source/api-gateway"
+            ["bff-mobile"]="source/bff-mobile"
+            ["bff-backoffice"]="source/bff-backoffice"
+            ["backoffice"]="source/backoffice"
           )
 
           declare -A TARGET_MAP=(
@@ -150,11 +165,30 @@ jobs:
           echo "context=${CONTEXT_MAP[${{ matrix.service }}]}" >> "$GITHUB_OUTPUT"
           echo "target=${TARGET_MAP[${{ matrix.service }}]:-}" >> "$GITHUB_OUTPUT"
 
-      - name: Build and push
+      - name: Checkout service source repository
+        uses: actions/checkout@v4
+        with:
+          repository: AxiomNode/${{ steps.meta.outputs.repo }}
+          path: source/${{ steps.meta.outputs.repo }}
+          fetch-depth: 1
+          token: ${{ github.token }}
+
+      - name: Build and push (with target)
+        if: steps.meta.outputs.target != ''
         uses: docker/build-push-action@v6
         with:
           context: ${{ steps.meta.outputs.context }}
-          target: ${{ steps.meta.outputs.target || '' }}
+          target: ${{ steps.meta.outputs.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push (no target)
+        if: steps.meta.outputs.target == ''
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.meta.outputs.context }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
