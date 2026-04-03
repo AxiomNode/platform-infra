@@ -93,6 +93,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate cross-repo token
+        run: |
+          if [[ -z "${{ secrets.CROSS_REPO_READ_TOKEN }}" ]]; then
+            echo "CROSS_REPO_READ_TOKEN is required to checkout service repositories (AxiomNode/*)."
+            echo "Create it in platform-infra > Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -171,7 +179,7 @@ jobs:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
           path: source/${{ steps.meta.outputs.repo }}
           fetch-depth: 1
-          token: ${{ github.token }}
+          token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
 
       - name: Build and push (with target)
         if: steps.meta.outputs.target != ''
