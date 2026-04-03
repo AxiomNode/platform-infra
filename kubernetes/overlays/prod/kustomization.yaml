@@ -1,0 +1,70 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: axiomnode-prod
+
+resources:
+  - ../../base
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/llama-resources.yaml
+  # Remove in-cluster databases for prod (use managed DB)
+  - path: patches/remove-db-statefulsets.yaml
+
+configMapGenerator:
+  - name: ai-engine-api-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+      - WORKERS=4
+  - name: ai-engine-stats-config
+    literals:
+      - DISTRIBUTION=prod
+  - name: microservice-quizz-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+  - name: microservice-wordpass-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+  - name: microservice-users-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+  - name: api-gateway-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+  - name: bff-mobile-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+  - name: bff-backoffice-config
+    literals:
+      - DISTRIBUTION=prod
+      - LOG_LEVEL=warning
+
+images:
+  - name: docker.io/axiomnode/ai-engine-api
+    newTag: latest
+  - name: docker.io/axiomnode/ai-engine-stats
+    newTag: latest
+  - name: docker.io/axiomnode/microservice-quizz-api
+    newTag: latest
+  - name: docker.io/axiomnode/microservice-wordpass-api
+    newTag: latest
+  - name: docker.io/axiomnode/microservice-users-api
+    newTag: latest
+  - name: docker.io/axiomnode/api-gateway
+    newTag: latest
+  - name: docker.io/axiomnode/bff-mobile
+    newTag: latest
+  - name: docker.io/axiomnode/bff-backoffice
+    newTag: latest
+  - name: docker.io/axiomnode/backoffice
+    newTag: latest

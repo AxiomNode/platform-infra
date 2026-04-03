@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-mobile
+  labels:
+    app.kubernetes.io/name: bff-mobile
+    app.kubernetes.io/component: bff
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bff-mobile
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bff-mobile
+        app.kubernetes.io/component: bff
+        app.kubernetes.io/part-of: axiomnode
+    spec:
+      containers:
+        - name: bff-mobile
+          image: docker.io/axiomnode/bff-mobile:latest
+          ports:
+            - containerPort: 7010
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "7010"
+            - name: QUIZZ_SERVICE_URL
+              value: "http://microservice-quizz-api:7100"
+            - name: WORDPASS_SERVICE_URL
+              value: "http://microservice-wordpass-api:7100"
+            - name: USERS_SERVICE_URL
+              value: "http://microservice-users-api:7100"
+            - name: AI_ENGINE_URL
+              value: "http://ai-engine-api:8001"
+          envFrom:
+            - configMapRef:
+                name: bff-mobile-config
+                optional: true
+            - secretRef:
+                name: bff-mobile-secret
+                optional: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 7010
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 7010
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-llama
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: llama-server
+          resources:
+            requests:
+              cpu: "2000m"
+              memory: "6Gi"
+            limits:
+              cpu: "4000m"
+              memory: "10Gi"
+          env:
+            - name: LLAMA_THREADS
+              value: "4"
+            - name: LLAMA_BATCH
+              value: "512"
+            - name: LLAMA_CTX_SIZE
+              value: "2048"
+            - name: LLAMA_PARALLEL
+              value: "2"

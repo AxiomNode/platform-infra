@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: microservice-wordpass-api
+  labels:
+    app.kubernetes.io/name: microservice-wordpass-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: microservice-wordpass-api
+  ports:
+    - port: 7100
+      targetPort: 7100
+      protocol: TCP

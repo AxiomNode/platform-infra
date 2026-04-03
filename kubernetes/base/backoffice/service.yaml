@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backoffice
+  labels:
+    app.kubernetes.io/name: backoffice
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: backoffice
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP

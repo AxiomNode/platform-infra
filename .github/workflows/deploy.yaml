@@ -1,0 +1,108 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Docker Images"]
+    types: [completed]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'stg' || 'dev') }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'stg' || 'dev') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "env=stg" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=dev" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate manifests
+        run: |
+          # Install kustomize
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+          ENV="${{ steps.env.outputs.env }}"
+          echo "Validating overlay: ${ENV}"
+          kustomize build "kubernetes/overlays/${ENV}" > /dev/null
+          echo "Manifests valid."
+
+      - name: Deploy to k3s (dev/stg)
+        if: steps.env.outputs.env != 'prod'
+        env:
+          K3S_HOST: ${{ secrets.K3S_HOST }}
+          K3S_SSH_KEY: ${{ secrets.K3S_SSH_KEY }}
+          K3S_USER: ${{ secrets.K3S_USER }}
+        run: |
+          ENV="${{ steps.env.outputs.env }}"
+
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$K3S_SSH_KEY" > ~/.ssh/k3s_key
+          chmod 600 ~/.ssh/k3s_key
+          ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Copy manifests and apply
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/k3s_key" \
+            kubernetes/ \
+            "${K3S_USER}@${K3S_HOST}:/opt/axiomnode/kubernetes/"
+
+          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+            "cd /opt/axiomnode && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
+
+          # Wait for rollouts
+          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+            "NAMESPACE=axiomnode-${ENV} && \
+             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
+               echo \"Waiting for \$deploy...\" && \
+               k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s || true; \
+             done"
+
+      - name: Deploy to cloud (prod)
+        if: steps.env.outputs.env == 'prod'
+        env:
+          KUBECONFIG_DATA: ${{ secrets.PROD_KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+
+          kubectl apply -k kubernetes/overlays/prod/
+
+          NAMESPACE="axiomnode-prod"
+          for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
+            echo "Waiting for ${deploy}..."
+            kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s || true
+          done
+
+      - name: Smoke test
+        run: |
+          ENV="${{ steps.env.outputs.env }}"
+          echo "Deployment to ${ENV} completed."
+          echo "Run smoke tests manually or via the existing smoke-edge.sh script."

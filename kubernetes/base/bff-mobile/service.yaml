@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bff-mobile
+  labels:
+    app.kubernetes.io/name: bff-mobile
+    app.kubernetes.io/component: bff
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: bff-mobile
+  ports:
+    - port: 7010
+      targetPort: 7010
+      protocol: TCP

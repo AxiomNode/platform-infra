@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ai-engine-llama-models
+  labels:
+    app.kubernetes.io/name: ai-engine-llama
+    app.kubernetes.io/component: llm
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ""

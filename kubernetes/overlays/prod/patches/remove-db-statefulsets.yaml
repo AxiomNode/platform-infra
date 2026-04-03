@@ -1,0 +1,39 @@
+# Remove in-cluster database StatefulSets and headless services for prod
+# (use managed database services like RDS/Cloud SQL instead)
+# The DATABASE_URL secrets should point to the external managed DB endpoints
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: quizz-db
+$patch: delete
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: quizz-db
+$patch: delete
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wordpass-db
+$patch: delete
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpass-db
+$patch: delete
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: users-db
+$patch: delete
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-db
+$patch: delete

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-engine-cache
+  labels:
+    app.kubernetes.io/name: ai-engine-cache
+    app.kubernetes.io/component: cache
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  selector:
+    app.kubernetes.io/name: ai-engine-cache
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+  type: ClusterIP

@@ -1,0 +1,66 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: axiomnode-stg
+
+resources:
+  - ../../base
+  - ingress.yaml
+
+patches:
+  - path: patches/replicas.yaml
+  - path: patches/llama-resources.yaml
+
+configMapGenerator:
+  - name: ai-engine-api-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+      - WORKERS=2
+  - name: ai-engine-stats-config
+    literals:
+      - DISTRIBUTION=stg
+  - name: microservice-quizz-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: microservice-wordpass-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: microservice-users-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: api-gateway-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: bff-mobile-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: bff-backoffice-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+
+images:
+  - name: docker.io/axiomnode/ai-engine-api
+    newTag: stg
+  - name: docker.io/axiomnode/ai-engine-stats
+    newTag: stg
+  - name: docker.io/axiomnode/microservice-quizz-api
+    newTag: stg
+  - name: docker.io/axiomnode/microservice-wordpass-api
+    newTag: stg
+  - name: docker.io/axiomnode/microservice-users-api
+    newTag: stg
+  - name: docker.io/axiomnode/api-gateway
+    newTag: stg
+  - name: docker.io/axiomnode/bff-mobile
+    newTag: stg
+  - name: docker.io/axiomnode/bff-backoffice
+    newTag: stg
+  - name: docker.io/axiomnode/backoffice
+    newTag: stg

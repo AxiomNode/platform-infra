@@ -1,0 +1,28 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: axiomnode-ingress
+  labels:
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`api.stg.axiomnode.dev`)
+      kind: Rule
+      services:
+        - name: api-gateway
+          port: 7005
+
+    - match: Host(`backoffice.stg.axiomnode.dev`)
+      kind: Rule
+      services:
+        - name: backoffice
+          port: 80
+
+    - match: Host(`ai.stg.axiomnode.dev`)
+      kind: Rule
+      services:
+        - name: ai-engine-api
+          port: 8001
