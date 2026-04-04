@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build & Push Docker Images"]
     types: [completed]
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -13,11 +13,9 @@ on:
         type: choice
         options:
           - dev
-          - stg
-          - prod
 
 concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.event.workflow_run.head_branch == 'main' && 'stg' || 'dev') }}
+  group: deploy-dev
   cancel-in-progress: false
 
 jobs:
@@ -27,20 +25,14 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     environment:
-      name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.event.workflow_run.head_branch == 'main' && 'stg' || 'dev') }}
+      name: dev
     steps:
       - uses: actions/checkout@v4
 
       - name: Determine environment
         id: env
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ github.event.workflow_run.head_branch }}" == "main" ]]; then
-            echo "env=stg" >> "$GITHUB_OUTPUT"
-          else
-            echo "env=dev" >> "$GITHUB_OUTPUT"
-          fi
+          echo "env=dev" >> "$GITHUB_OUTPUT"
 
       - name: Validate manifests
         run: |
@@ -53,8 +45,7 @@ jobs:
           kustomize build "kubernetes/overlays/${ENV}" > /dev/null
           echo "Manifests valid."
 
-      - name: Deploy to k3s (dev/stg)
-        if: steps.env.outputs.env != 'prod'
+      - name: Deploy to k3s (dev)
         env:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -115,43 +106,6 @@ jobs:
                echo \"Waiting for \$deploy...\" && \
                k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s || true; \
              done" || true
-
-      - name: Deploy to cloud (prod)
-        if: steps.env.outputs.env == 'prod'
-        env:
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
-          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
-          KUBECONFIG_DATA: ${{ secrets.PROD_KUBECONFIG }}
-        run: |
-          if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
-            echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
-            exit 1
-          fi
-
-          mkdir -p ~/.kube
-          echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
-
-          NAMESPACE="axiomnode-prod"
-
-          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-          kubectl -n "$NAMESPACE" create secret docker-registry ghcr-pull \
-            --docker-server=ghcr.io \
-            --docker-username="$GHCR_PULL_USERNAME" \
-            --docker-password="$GHCR_PULL_TOKEN" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl patch serviceaccount default -n "$NAMESPACE" --type=merge -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
-
-          kubectl apply -k kubernetes/overlays/prod/
-
-          for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
-            echo "Restarting ${deploy}..."
-            kubectl rollout restart deployment/"$deploy" -n "$NAMESPACE" || true
-          done
-
-          for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
-            echo "Waiting for ${deploy}..."
-            kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s || true
-          done
 
       - name: Smoke test
         run: |
