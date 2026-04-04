@@ -64,6 +64,7 @@ jobs:
         run: |
           ENV="${{ steps.env.outputs.env }}"
           NAMESPACE="axiomnode-${ENV}"
+          REMOTE_DIR="/home/${K3S_USER}/axiomnode"
 
           if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
             echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
@@ -76,15 +77,14 @@ jobs:
           chmod 600 ~/.ssh/k3s_key
           ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Ensure remote workspace exists before rsync.
-          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
-            "sudo mkdir -p /opt/axiomnode 2>/dev/null || mkdir -p /opt/axiomnode; sudo chown -R ${K3S_USER}:${K3S_USER} /opt/axiomnode 2>/dev/null || true"
+          # Ensure remote workspace exists in user-owned path.
+          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
           # Copy manifests and apply
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/k3s_key" \
             kubernetes/ \
-            "${K3S_USER}@${K3S_HOST}:/opt/axiomnode/kubernetes/"
+            "${K3S_USER}@${K3S_HOST}:${REMOTE_DIR}/kubernetes/"
 
           # Ensure namespace has pull credentials for private GHCR images.
           ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
@@ -98,7 +98,7 @@ jobs:
              k3s kubectl patch serviceaccount default -n \\\$NAMESPACE --type=merge -p '{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}]}'"
 
           ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
-            "cd /opt/axiomnode && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
+            "cd '${REMOTE_DIR}' && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
 
           # Wait for rollouts
           ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
