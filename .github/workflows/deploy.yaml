@@ -76,6 +76,10 @@ jobs:
           chmod 600 ~/.ssh/k3s_key
           ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
+          # Ensure remote workspace exists before rsync.
+          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+            "sudo mkdir -p /opt/axiomnode 2>/dev/null || mkdir -p /opt/axiomnode; sudo chown -R ${K3S_USER}:${K3S_USER} /opt/axiomnode 2>/dev/null || true"
+
           # Copy manifests and apply
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/k3s_key" \
