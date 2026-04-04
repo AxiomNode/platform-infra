@@ -21,7 +21,8 @@ spec:
       containers:
         - name: bff-mobile
           image: ghcr.io/axiomnode/bff-mobile:latest
-          ports:
+          imagePullPolicy: Always
+ports:
             - containerPort: 7010
               protocol: TCP
           env:

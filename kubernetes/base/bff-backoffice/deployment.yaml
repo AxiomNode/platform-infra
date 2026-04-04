@@ -21,7 +21,8 @@ spec:
       containers:
         - name: bff-backoffice
           image: ghcr.io/axiomnode/bff-backoffice:latest
-          ports:
+          imagePullPolicy: Always
+ports:
             - containerPort: 7011
               protocol: TCP
           env:

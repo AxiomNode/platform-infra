@@ -100,6 +100,14 @@ jobs:
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "cd '${REMOTE_DIR}' && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
 
+          # Force a restart so mutable tags (dev/stg) are re-evaluated on deploy runs.
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+            "NAMESPACE=axiomnode-${ENV} && \
+             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
+               echo \"Restarting \$deploy...\" && \
+               k3s kubectl rollout restart deployment/\$deploy -n \$NAMESPACE || true; \
+             done"
+
           # Wait for rollouts
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "NAMESPACE=axiomnode-${ENV} && \
@@ -134,6 +142,11 @@ jobs:
           kubectl patch serviceaccount default -n "$NAMESPACE" --type=merge -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
 
           kubectl apply -k kubernetes/overlays/prod/
+
+          for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
+            echo "Restarting ${deploy}..."
+            kubectl rollout restart deployment/"$deploy" -n "$NAMESPACE" || true
+          done
 
           for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
             echo "Waiting for ${deploy}..."
