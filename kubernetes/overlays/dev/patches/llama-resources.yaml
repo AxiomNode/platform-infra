@@ -3,9 +3,35 @@ kind: Deployment
 metadata:
   name: ai-engine-llama
 spec:
-  replicas: 0
+  replicas: 1
   template:
     spec:
+      initContainers:
+        - name: llama-model-bootstrap
+          image: busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              MODEL_PATH="/models/${LLAMA_MODEL_FILE}"
+
+              if [ -s "${MODEL_PATH}" ]; then
+                echo "Model already present: ${MODEL_PATH}"
+                exit 0
+              fi
+
+              echo "Downloading model to ${MODEL_PATH}"
+              wget -O "${MODEL_PATH}.tmp" "${LLAMA_MODEL_URL}"
+              mv "${MODEL_PATH}.tmp" "${MODEL_PATH}"
+              ls -lh "${MODEL_PATH}"
+          env:
+            - name: LLAMA_MODEL_FILE
+              value: "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+            - name: LLAMA_MODEL_URL
+              value: "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf?download=true"
+          volumeMounts:
+            - name: models
+              mountPath: /models
       containers:
         - name: llama-server
           resources:
@@ -16,8 +42,10 @@ spec:
               cpu: "2000m"
               memory: "6Gi"
           env:
+            - name: LLAMA_MODEL_FILE
+              value: "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
             - name: LLAMA_THREADS
-              value: "4"
+              value: "2"
             - name: LLAMA_BATCH
               value: "256"
             - name: LLAMA_CTX_SIZE
