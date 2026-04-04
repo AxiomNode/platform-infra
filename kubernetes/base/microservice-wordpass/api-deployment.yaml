@@ -22,7 +22,7 @@ spec:
         - name: microservice-wordpass
           image: ghcr.io/axiomnode/microservice-wordpass-api:latest
           imagePullPolicy: Always
-command: ["sh", "-c"]
+          command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"
           ports:

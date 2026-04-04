@@ -22,7 +22,7 @@ spec:
         - name: microservice-users
           image: ghcr.io/axiomnode/microservice-users-api:latest
           imagePullPolicy: Always
-command: ["sh", "-c"]
+          command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"
           ports:
