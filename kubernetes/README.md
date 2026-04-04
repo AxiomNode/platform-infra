@@ -91,7 +91,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ## CI/CD
 
 - **Build & Push** (`.github/workflows/build-push.yaml`): Detects changed services, builds Docker images, pushes to GHCR.
-- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build or manually. Applies Kustomize overlays to the target cluster.
+- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `dev` only.
 
 ### Required GitHub Secrets
 
@@ -103,7 +103,6 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 | `K3S_HOST` | VPS IP address |
 | `K3S_USER` | SSH user for VPS |
 | `K3S_SSH_KEY` | SSH private key for VPS |
-| `PROD_KUBECONFIG` | Base64-encoded kubeconfig for prod cluster |
 
 `GITHUB_TOKEN` is provided automatically by GitHub Actions and is used for pushing images to GHCR in the build workflow.
 

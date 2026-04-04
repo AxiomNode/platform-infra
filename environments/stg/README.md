@@ -1,3 +1,3 @@
 # Stg Environment
 
-Definiciones de entorno de staging.
+Staging environment definitions used for pre-production validation.

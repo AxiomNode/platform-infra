@@ -1,3 +1,3 @@
 # Prod Environment
 
-Definiciones de entorno de produccion.
+Production environment definitions and release-hardening assets.

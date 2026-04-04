@@ -1,3 +1,3 @@
 # Kubernetes Base
 
-Manifiestos base por entorno para despliegue de plataforma y aplicaciones.
+Base manifests shared by all environments for platform and application deployment.

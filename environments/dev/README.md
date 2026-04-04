@@ -1,7 +1,7 @@
 # Dev Environment
 
-Definiciones de entorno de desarrollo.
+Development environment definitions and local integration assets.
 
 ## Edge integration
 
-- `docker-compose.edge-integration.yml`: levanta backoffice + api-gateway + bff-mobile + bff-backoffice para pruebas locales integradas.
+- `docker-compose.edge-integration.yml`: starts backoffice + api-gateway + bff-mobile + bff-backoffice for integrated local testing.
