@@ -88,6 +88,7 @@ jobs:
     if: needs.detect-changes.outputs.services != '[]'
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services) }}
     steps:
@@ -100,6 +101,53 @@ jobs:
             echo "Create it in platform-infra > Settings > Secrets and variables > Actions."
             exit 1
           fi
+
+      - name: Validate token access to source repository
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          SERVICE="${{ matrix.service }}"
+          SOURCE_REPO="${SERVICE}"
+          if [[ "${SERVICE}" == "ai-engine-api" || "${SERVICE}" == "ai-engine-stats" ]]; then
+            SOURCE_REPO="ai-engine"
+          fi
+
+          TARGET_REPO="AxiomNode/${SOURCE_REPO}"
+
+          STATUS_CODE=$(curl -sS -o /tmp/repo_access.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${TARGET_REPO}")
+
+          if [[ "${STATUS_CODE}" != "200" ]]; then
+            echo "::error::CROSS_REPO_READ_TOKEN cannot access ${TARGET_REPO} (HTTP ${STATUS_CODE})."
+            echo "If using a Fine-grained PAT, include this repository and grant Contents: Read."
+            cat /tmp/repo_access.json
+            exit 1
+          fi
+
+      - name: Validate token access to dependency repositories
+        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        env:
+          GH_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          for DEP_REPO in "AxiomNode/shared-sdk-client" "AxiomNode/contracts-and-schemas"; do
+            STATUS_CODE=$(curl -sS -o /tmp/repo_access_dep.json -w "%{http_code}" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${DEP_REPO}")
+
+            if [[ "${STATUS_CODE}" != "200" ]]; then
+              echo "::error::CROSS_REPO_READ_TOKEN cannot access ${DEP_REPO} (HTTP ${STATUS_CODE})."
+              echo "Include dependency repositories and grant Contents: Read."
+              cat /tmp/repo_access_dep.json
+              exit 1
+            fi
+          done
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -156,13 +204,25 @@ jobs:
           declare -A CONTEXT_MAP=(
             ["ai-engine-api"]="source/ai-engine/src"
             ["ai-engine-stats"]="source/ai-engine/src"
-            ["microservice-quizz"]="source/microservice-quizz"
-            ["microservice-wordpass"]="source/microservice-wordpass"
-            ["microservice-users"]="source/microservice-users"
-            ["api-gateway"]="source/api-gateway"
-            ["bff-mobile"]="source/bff-mobile"
-            ["bff-backoffice"]="source/bff-backoffice"
-            ["backoffice"]="source/backoffice"
+            ["microservice-quizz"]="source"
+            ["microservice-wordpass"]="source"
+            ["microservice-users"]="source"
+            ["api-gateway"]="source"
+            ["bff-mobile"]="source"
+            ["bff-backoffice"]="source"
+            ["backoffice"]="source"
+          )
+
+          declare -A DOCKERFILE_MAP=(
+            ["ai-engine-api"]="source/ai-engine/src/Dockerfile"
+            ["ai-engine-stats"]="source/ai-engine/src/Dockerfile"
+            ["microservice-quizz"]="source/microservice-quizz/src/Dockerfile"
+            ["microservice-wordpass"]="source/microservice-wordpass/src/Dockerfile"
+            ["microservice-users"]="source/microservice-users/src/Dockerfile"
+            ["api-gateway"]="source/api-gateway/src/Dockerfile.edge"
+            ["bff-mobile"]="source/bff-mobile/src/Dockerfile.edge"
+            ["bff-backoffice"]="source/bff-backoffice/src/Dockerfile.edge"
+            ["backoffice"]="source/backoffice/Dockerfile"
           )
 
           declare -A TARGET_MAP=(
@@ -171,6 +231,7 @@ jobs:
           )
 
           echo "context=${CONTEXT_MAP[${{ matrix.service }}]}" >> "$GITHUB_OUTPUT"
+          echo "dockerfile=${DOCKERFILE_MAP[${{ matrix.service }}]}" >> "$GITHUB_OUTPUT"
           echo "target=${TARGET_MAP[${{ matrix.service }}]:-}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout service source repository
@@ -181,11 +242,30 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
 
+      - name: Checkout shared-sdk-client
+        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        uses: actions/checkout@v4
+        with:
+          repository: AxiomNode/shared-sdk-client
+          path: source/shared-sdk-client
+          fetch-depth: 1
+          token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+
+      - name: Checkout contracts-and-schemas
+        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        uses: actions/checkout@v4
+        with:
+          repository: AxiomNode/contracts-and-schemas
+          path: source/contracts-and-schemas
+          fetch-depth: 1
+          token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+
       - name: Build and push (with target)
         if: steps.meta.outputs.target != ''
         uses: docker/build-push-action@v6
         with:
           context: ${{ steps.meta.outputs.context }}
+          file: ${{ steps.meta.outputs.dockerfile }}
           target: ${{ steps.meta.outputs.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -197,6 +277,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ${{ steps.meta.outputs.context }}
+          file: ${{ steps.meta.outputs.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
