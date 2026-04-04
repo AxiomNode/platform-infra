@@ -52,6 +52,10 @@ cp secrets/dev.env.example secrets/dev.env
 ### 3. Deploy
 
 ```bash
+# Required for private GHCR pulls when using scripts/deploy.sh manually
+export GHCR_PULL_USERNAME=<github-username>
+export GHCR_PULL_TOKEN=<token-with-read-packages>
+
 # Deploy to dev
 ./scripts/deploy.sh dev
 
@@ -94,12 +98,14 @@ cp secrets/dev.env.example secrets/dev.env
 | Secret | Description |
 |---|---|
 | `CROSS_REPO_READ_TOKEN` | Fine-grained PAT with `Contents: Read` for all AxiomNode source/dependency repos used in matrix builds |
-| `GHCR_PULL_USERNAME` | GitHub username used by the cluster to pull private GHCR images |
-| `GHCR_PULL_TOKEN` | GitHub token (classic PAT recommended) with at least `read:packages` for `ghcr.io/axiomnode/*` |
+| `GHCR_PULL_USERNAME` | GitHub username used by cluster deploy jobs to create the GHCR imagePullSecret |
+| `GHCR_PULL_TOKEN` | GitHub token (classic PAT recommended) with at least `read:packages` and `repo` (if packages are private) |
 | `K3S_HOST` | VPS IP address |
 | `K3S_USER` | SSH user for VPS |
 | `K3S_SSH_KEY` | SSH private key for VPS |
 | `PROD_KUBECONFIG` | Base64-encoded kubeconfig for prod cluster |
+
+`GITHUB_TOKEN` is provided automatically by GitHub Actions and is used for pushing images to GHCR in the build workflow.
 
 ## Prod Features
 

@@ -18,20 +18,38 @@ fi
 
 echo "=== Deploying AxiomNode to ${ENV} ==="
 
+NAMESPACE="axiomnode-${ENV}"
+
+echo "[0/4] Ensuring GHCR pull secret..."
+if [[ -z "${GHCR_PULL_USERNAME:-}" || -z "${GHCR_PULL_TOKEN:-}" ]]; then
+  echo "Error: GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR images."
+  echo "Export them before deploy, e.g.:"
+  echo "  export GHCR_PULL_USERNAME=<github-username>"
+  echo "  export GHCR_PULL_TOKEN=<token-with-read-packages>"
+  exit 1
+fi
+
+$KUBECTL create namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
+$KUBECTL -n "$NAMESPACE" create secret docker-registry ghcr-pull \
+  --docker-server=ghcr.io \
+  --docker-username="$GHCR_PULL_USERNAME" \
+  --docker-password="$GHCR_PULL_TOKEN" \
+  --dry-run=client -o yaml | $KUBECTL apply -f -
+$KUBECTL patch serviceaccount default -n "$NAMESPACE" --type=merge -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}' >/dev/null
+
 # Validate manifests first
-echo "[1/3] Validating manifests..."
+echo "[1/4] Validating manifests..."
 $KUBECTL apply -k "$OVERLAY_DIR" --dry-run=server 2>&1 || {
   echo "Validation failed. Aborting deployment."
   exit 1
 }
 
 # Apply manifests
-echo "[2/3] Applying manifests..."
+echo "[2/4] Applying manifests..."
 $KUBECTL apply -k "$OVERLAY_DIR"
 
 # Wait for rollout
-echo "[3/3] Waiting for rollouts..."
-NAMESPACE="axiomnode-${ENV}"
+echo "[3/4] Waiting for rollouts..."
 DEPLOYMENTS=$($KUBECTL get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}')
 
 for deploy in $DEPLOYMENTS; do
