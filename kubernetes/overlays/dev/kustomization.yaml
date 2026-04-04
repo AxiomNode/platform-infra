@@ -32,18 +32,28 @@ configMapGenerator:
       - LOG_LEVEL=debug
   - name: microservice-users-config
     literals:
+      - SERVICE_NAME=microservice-users
+      - SERVICE_PORT=7100
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
+      - FIREBASE_STRICT_AUTH=false
+      - PRIVATE_DOCS_ENABLED=false
   - name: api-gateway-config
     literals:
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
   - name: bff-mobile-config
     literals:
+      - SERVICE_NAME=bff-mobile
+      - SERVICE_PORT=7010
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
   - name: bff-backoffice-config
     literals:
+      - SERVICE_NAME=bff-backoffice
+      - SERVICE_PORT=7011
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
 

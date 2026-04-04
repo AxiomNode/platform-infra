@@ -10,11 +10,11 @@ spec:
         - name: llama-server
           resources:
             requests:
-              cpu: "2000m"
-              memory: "4Gi"
+              cpu: "500m"
+              memory: "2Gi"
             limits:
-              cpu: "4000m"
-              memory: "8Gi"
+              cpu: "2000m"
+              memory: "6Gi"
           env:
             - name: LLAMA_THREADS
               value: "4"
