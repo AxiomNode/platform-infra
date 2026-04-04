@@ -79,7 +79,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 | ai-engine-api | `ghcr.io/axiomnode/ai-engine-api` | 8001 | 500m-1500m / 2-4Gi |
 | ai-engine-stats | `ghcr.io/axiomnode/ai-engine-stats` | 8000 | 250m-500m / 256-512Mi |
 | ai-engine-cache | `redis:7-alpine` | 6379 | 100m-250m / 128-256Mi |
-| ai-engine-llama | `ghcr.io/ggerganov/llama.cpp:server` | 8080 | 2-4 CPU / 6-10Gi |
+| ai-engine-llama | `ghcr.io/ggml-org/llama.cpp:server` | 8080 | 2-4 CPU / 6-10Gi |
 | microservice-quizz-api | `ghcr.io/axiomnode/microservice-quizz-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-wordpass-api | `ghcr.io/axiomnode/microservice-wordpass-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-users-api | `ghcr.io/axiomnode/microservice-users-api` | 7100 | 250m-1 / 256-512Mi |

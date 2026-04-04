@@ -116,6 +116,8 @@ jobs:
           SOURCE_REPO="${SERVICE}"
           if [[ "${SERVICE}" == "ai-engine-api" || "${SERVICE}" == "ai-engine-stats" ]]; then
             SOURCE_REPO="ai-engine"
+          elif [[ "${SERVICE}" == "microservice-wordpass" ]]; then
+            SOURCE_REPO="microservice-word-pass"
           fi
 
           TARGET_REPO="AxiomNode/${SOURCE_REPO}"
@@ -173,7 +175,7 @@ jobs:
             ["ai-engine-api"]="ai-engine"
             ["ai-engine-stats"]="ai-engine"
             ["microservice-quizz"]="microservice-quizz"
-            ["microservice-wordpass"]="microservice-wordpass"
+            ["microservice-wordpass"]="microservice-word-pass"
             ["microservice-users"]="microservice-users"
             ["api-gateway"]="api-gateway"
             ["bff-mobile"]="bff-mobile"
@@ -196,6 +198,18 @@ jobs:
           IMAGE_NAME="${IMAGE_NAME_MAP[${{ matrix.service }}]}"
           REPO_NAME="${REPO_MAP[${{ matrix.service }}]}"
 
+          declare -A CHECKOUT_PATH_MAP=(
+            ["ai-engine-api"]="ai-engine"
+            ["ai-engine-stats"]="ai-engine"
+            ["microservice-quizz"]="microservice-quizz"
+            ["microservice-wordpass"]="microservice-wordpass"
+            ["microservice-users"]="microservice-users"
+            ["api-gateway"]="api-gateway"
+            ["bff-mobile"]="bff-mobile"
+            ["bff-backoffice"]="bff-backoffice"
+            ["backoffice"]="backoffice"
+          )
+
           if [[ "$BRANCH" == "main" ]]; then
             TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:stg,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
           else
@@ -204,6 +218,7 @@ jobs:
 
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
           echo "repo=${REPO_NAME}" >> "$GITHUB_OUTPUT"
+          echo "checkout_path=${CHECKOUT_PATH_MAP[${{ matrix.service }}]}" >> "$GITHUB_OUTPUT"
 
           # Determine build context and target
           declare -A CONTEXT_MAP=(
@@ -243,7 +258,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
-          path: source/${{ steps.meta.outputs.repo }}
+          path: source/${{ steps.meta.outputs.checkout_path }}
           fetch-depth: 1
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
 
