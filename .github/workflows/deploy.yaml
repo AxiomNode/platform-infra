@@ -56,11 +56,19 @@ jobs:
       - name: Deploy to k3s (dev/stg)
         if: steps.env.outputs.env != 'prod'
         env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           K3S_HOST: ${{ secrets.K3S_HOST }}
           K3S_SSH_KEY: ${{ secrets.K3S_SSH_KEY }}
           K3S_USER: ${{ secrets.K3S_USER }}
         run: |
           ENV="${{ steps.env.outputs.env }}"
+          NAMESPACE="axiomnode-${ENV}"
+
+          if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
+            echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
+            exit 1
+          fi
 
           # Setup SSH
           mkdir -p ~/.ssh
@@ -73,6 +81,17 @@ jobs:
             -e "ssh -i ~/.ssh/k3s_key" \
             kubernetes/ \
             "${K3S_USER}@${K3S_HOST}:/opt/axiomnode/kubernetes/"
+
+          # Ensure namespace has pull credentials for private GHCR images.
+          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+            "NAMESPACE='${NAMESPACE}' && \
+             k3s kubectl create namespace \\\$NAMESPACE --dry-run=client -o yaml | k3s kubectl apply -f - && \
+             k3s kubectl -n \\\$NAMESPACE create secret docker-registry ghcr-pull \
+               --docker-server=ghcr.io \
+               --docker-username='${GHCR_PULL_USERNAME}' \
+               --docker-password='${GHCR_PULL_TOKEN}' \
+               --dry-run=client -o yaml | k3s kubectl apply -f - && \
+             k3s kubectl patch serviceaccount default -n \\\$NAMESPACE --type=merge -p '{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}]}'"
 
           ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
             "cd /opt/axiomnode && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
@@ -88,14 +107,30 @@ jobs:
       - name: Deploy to cloud (prod)
         if: steps.env.outputs.env == 'prod'
         env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           KUBECONFIG_DATA: ${{ secrets.PROD_KUBECONFIG }}
         run: |
+          if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
+            echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
+            exit 1
+          fi
+
           mkdir -p ~/.kube
           echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
 
+          NAMESPACE="axiomnode-prod"
+
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$NAMESPACE" create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io \
+            --docker-username="$GHCR_PULL_USERNAME" \
+            --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch serviceaccount default -n "$NAMESPACE" --type=merge -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}'
+
           kubectl apply -k kubernetes/overlays/prod/
 
-          NAMESPACE="axiomnode-prod"
           for deploy in $(kubectl get deployments -n "$NAMESPACE" -o jsonpath='{.items[*].metadata.name}'); do
             echo "Waiting for ${deploy}..."
             kubectl rollout status deployment/"$deploy" -n "$NAMESPACE" --timeout=300s || true

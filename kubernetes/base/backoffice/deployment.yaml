@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: backoffice
-          image: docker.io/axiomnode/backoffice:latest
+          image: ghcr.io/axiomnode/backoffice:latest
           ports:
             - containerPort: 80
               protocol: TCP

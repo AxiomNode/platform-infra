@@ -47,21 +47,21 @@ configMapGenerator:
       - LOG_LEVEL=info
 
 images:
-  - name: docker.io/axiomnode/ai-engine-api
+  - name: ghcr.io/axiomnode/ai-engine-api
     newTag: stg
-  - name: docker.io/axiomnode/ai-engine-stats
+  - name: ghcr.io/axiomnode/ai-engine-stats
     newTag: stg
-  - name: docker.io/axiomnode/microservice-quizz-api
+  - name: ghcr.io/axiomnode/microservice-quizz-api
     newTag: stg
-  - name: docker.io/axiomnode/microservice-wordpass-api
+  - name: ghcr.io/axiomnode/microservice-wordpass-api
     newTag: stg
-  - name: docker.io/axiomnode/microservice-users-api
+  - name: ghcr.io/axiomnode/microservice-users-api
     newTag: stg
-  - name: docker.io/axiomnode/api-gateway
+  - name: ghcr.io/axiomnode/api-gateway
     newTag: stg
-  - name: docker.io/axiomnode/bff-mobile
+  - name: ghcr.io/axiomnode/bff-mobile
     newTag: stg
-  - name: docker.io/axiomnode/bff-backoffice
+  - name: ghcr.io/axiomnode/bff-backoffice
     newTag: stg
-  - name: docker.io/axiomnode/backoffice
+  - name: ghcr.io/axiomnode/backoffice
     newTag: stg

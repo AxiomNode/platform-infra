@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: bff-backoffice
-          image: docker.io/axiomnode/bff-backoffice:latest
+          image: ghcr.io/axiomnode/bff-backoffice:latest
           ports:
             - containerPort: 7011
               protocol: TCP

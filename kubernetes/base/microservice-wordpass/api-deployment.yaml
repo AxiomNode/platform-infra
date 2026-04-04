@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: microservice-wordpass
-          image: docker.io/axiomnode/microservice-wordpass-api:latest
+          image: ghcr.io/axiomnode/microservice-wordpass-api:latest
           command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"

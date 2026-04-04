@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: api-gateway
-          image: docker.io/axiomnode/api-gateway:latest
+          image: ghcr.io/axiomnode/api-gateway:latest
           ports:
             - containerPort: 7005
               protocol: TCP

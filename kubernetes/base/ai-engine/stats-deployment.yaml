@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: ai-engine-stats
-          image: docker.io/axiomnode/ai-engine-stats:latest
+          image: ghcr.io/axiomnode/ai-engine-stats:latest
           ports:
             - containerPort: 8000
               protocol: TCP

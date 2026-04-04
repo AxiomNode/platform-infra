@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: microservice-quizz
-          image: docker.io/axiomnode/microservice-quizz-api:latest
+          image: ghcr.io/axiomnode/microservice-quizz-api:latest
           command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: bff-mobile
-          image: docker.io/axiomnode/bff-mobile:latest
+          image: ghcr.io/axiomnode/bff-mobile:latest
           ports:
             - containerPort: 7010
               protocol: TCP
