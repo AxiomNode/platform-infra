@@ -22,7 +22,7 @@ spec:
         - name: ai-engine-stats
           image: ghcr.io/axiomnode/ai-engine-stats:latest
           imagePullPolicy: Always
-ports:
+          ports:
             - containerPort: 8000
               protocol: TCP
           env:

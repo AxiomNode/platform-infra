@@ -22,7 +22,7 @@ spec:
         - name: backoffice
           image: ghcr.io/axiomnode/backoffice:latest
           imagePullPolicy: Always
-ports:
+          ports:
             - containerPort: 80
               protocol: TCP
           resources:
