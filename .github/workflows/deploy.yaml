@@ -76,18 +76,19 @@ jobs:
           echo "$K3S_SSH_KEY" > ~/.ssh/k3s_key
           chmod 600 ~/.ssh/k3s_key
           ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          SSH_OPTS="-i ~/.ssh/k3s_key -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
 
           # Ensure remote workspace exists in user-owned path.
-          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
           # Copy manifests and apply
           rsync -avz --delete \
-            -e "ssh -i ~/.ssh/k3s_key" \
+            -e "ssh ${SSH_OPTS}" \
             kubernetes/ \
             "${K3S_USER}@${K3S_HOST}:${REMOTE_DIR}/kubernetes/"
 
           # Ensure namespace has pull credentials for private GHCR images.
-          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "k3s kubectl create namespace '${NAMESPACE}' --dry-run=client -o yaml | k3s kubectl apply -f - && \
              k3s kubectl -n '${NAMESPACE}' create secret docker-registry ghcr-pull \
                --docker-server=ghcr.io \
@@ -96,16 +97,16 @@ jobs:
                --dry-run=client -o yaml | k3s kubectl apply -f - && \
              k3s kubectl patch serviceaccount default -n '${NAMESPACE}' --type=merge -p '{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}]}'"
 
-          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "cd '${REMOTE_DIR}' && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
 
           # Wait for rollouts
-          ssh -i ~/.ssh/k3s_key "${K3S_USER}@${K3S_HOST}" \
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "NAMESPACE=axiomnode-${ENV} && \
              for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
                echo \"Waiting for \$deploy...\" && \
                k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s || true; \
-             done"
+             done" || true
 
       - name: Deploy to cloud (prod)
         if: steps.env.outputs.env == 'prod'
