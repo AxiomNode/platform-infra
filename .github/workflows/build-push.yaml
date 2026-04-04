@@ -197,7 +197,7 @@ jobs:
           REPO_NAME="${REPO_MAP[${{ matrix.service }}]}"
 
           if [[ "$BRANCH" == "main" ]]; then
-            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:stg,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest"
+            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:stg,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
           else
             TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
           fi
