@@ -24,10 +24,13 @@ configMapGenerator:
       - DISTRIBUTION=dev
   - name: microservice-quizz-config
     literals:
+      - PRIVATE_DOCS_ENABLED=false
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
   - name: microservice-wordpass-config
     literals:
+      - SERVICE_PORT=7100
+      - PRIVATE_DOCS_ENABLED=false
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
   - name: microservice-users-config

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: ai-engine-llama
 spec:
-  replicas: 1
+  replicas: 0
   template:
     spec:
       containers:
