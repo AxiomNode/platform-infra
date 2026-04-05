@@ -9,20 +9,14 @@ spec:
     - web
     - websecure
   routes:
-    - match: Host(`api.stg.axiomnode.dev`)
+    - match: Host(`axiomnode-gateway.amksandbox.cloud`)
       kind: Rule
       services:
         - name: api-gateway
           port: 7005
 
-    - match: Host(`backoffice.stg.axiomnode.dev`)
+    - match: Host(`axiomnode-backoffice.amksandbox.cloud`)
       kind: Rule
       services:
         - name: backoffice
           port: 80
-
-    - match: Host(`ai.stg.axiomnode.dev`)
-      kind: Rule
-      services:
-        - name: ai-engine-api
-          port: 8001

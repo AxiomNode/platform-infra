@@ -25,26 +25,50 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - PRIVATE_DOCS_ENABLED=false
   - name: microservice-wordpass-config
     literals:
+      - SERVICE_PORT=7100
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - PRIVATE_DOCS_ENABLED=false
   - name: microservice-users-config
     literals:
+      - SERVICE_NAME=microservice-users
+      - SERVICE_PORT=7100
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - FIREBASE_STRICT_AUTH=true
+      - PRIVATE_DOCS_ENABLED=false
   - name: api-gateway-config
     literals:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
   - name: bff-mobile-config
     literals:
+      - SERVICE_NAME=bff-mobile
+      - SERVICE_PORT=7010
+      - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
   - name: bff-backoffice-config
     literals:
+      - SERVICE_NAME=bff-backoffice
+      - SERVICE_PORT=7011
+      - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+  - name: backoffice-config
+    literals:
+      - VITE_API_BASE_URL=https://axiomnode-gateway.amksandbox.cloud
+      - VITE_AUTH_MODE=firebase
+      - VITE_FIREBASE_API_KEY=AIzaSyCwatBddeM-XP6mwesofOPfKouzlXCWkk8
+      - VITE_FIREBASE_AUTH_DOMAIN=axiomnode.firebaseapp.com
+      - VITE_FIREBASE_PROJECT_ID=axiomnode
+      - VITE_FIREBASE_STORAGE_BUCKET=axiomnode.firebasestorage.app
+      - VITE_FIREBASE_MESSAGING_SENDER_ID=909798677135
+      - VITE_FIREBASE_APP_ID=1:909798677135:web:fca121dc628cbee27b6efa
+      - VITE_FIREBASE_MEASUREMENT_ID=G-TGPDGDK2Q7
 
 images:
   - name: ghcr.io/axiomnode/ai-engine-api

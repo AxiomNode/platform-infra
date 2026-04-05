@@ -16,9 +16,9 @@ spec:
         - name: backoffice
           port: 80
 
-    # Public mobile API entry (used by mobile app)
-    - match: Host(`axiomnode-bff-mobile.amksandbox.cloud`)
+    # Public API gateway entry (used by backoffice/mobile edge clients)
+    - match: Host(`axiomnode-gateway.amksandbox.cloud`)
       kind: Rule
       services:
-        - name: bff-mobile
-          port: 7010
+        - name: api-gateway
+          port: 7005

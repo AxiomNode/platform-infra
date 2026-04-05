@@ -25,6 +25,13 @@ spec:
           ports:
             - containerPort: 80
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: backoffice-config
+                optional: true
+            - secretRef:
+                name: backoffice-secret
+                optional: true
           resources:
             requests:
               cpu: "50m"
