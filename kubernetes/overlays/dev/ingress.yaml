@@ -9,30 +9,16 @@ spec:
     - web
     - websecure
   routes:
-    # API Gateway — main entry point
-    - match: Host(`api.axiomnode.dev`)
-      kind: Rule
-      services:
-        - name: api-gateway
-          port: 7005
-
-    # Backoffice frontend
-    - match: Host(`backoffice.axiomnode.dev`)
+    # Public backoffice frontend (via Nginx Proxy Manager)
+    - match: Host(`axiomnode-backoffice.amksandbox.cloud`)
       kind: Rule
       services:
         - name: backoffice
           port: 80
 
-    # AI Engine API (direct access for dev/debug)
-    - match: Host(`ai.axiomnode.dev`)
+    # Public mobile API entry (used by mobile app)
+    - match: Host(`axiomnode-bff-mobile.amksandbox.cloud`)
       kind: Rule
       services:
-        - name: ai-engine-api
-          port: 8001
-
-    # AI Engine Stats
-    - match: Host(`stats.axiomnode.dev`)
-      kind: Rule
-      services:
-        - name: ai-engine-stats
-          port: 8000
+        - name: bff-mobile
+          port: 7010
