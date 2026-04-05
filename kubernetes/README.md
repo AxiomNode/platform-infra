@@ -2,6 +2,8 @@
 
 Kubernetes manifests and deployment tooling for the AxiomNode platform, using **Kustomize** with base + overlay pattern.
 
+`dev` runtime is local-first (Docker Compose) and does not use automatic Kubernetes deployment.
+
 ## Directory Structure
 
 ```
@@ -18,8 +20,8 @@ kubernetes/
 │   ├── bff-backoffice/            # BFF for backoffice
 │   └── backoffice/                # Backoffice frontend (nginx)
 └── overlays/
-    ├── dev/                       # k3s VPS — development
-    ├── stg/                       # k3s VPS — staging
+    ├── dev/                       # Legacy/optional k8s dev overlay (no automatic deploy)
+    ├── stg/                       # k3s VPS — staging (active remote target)
     └── prod/                      # Cloud managed — production
 ```
 
@@ -27,20 +29,26 @@ kubernetes/
 
 | Environment | Cluster | Ingress | Database | Namespace |
 |---|---|---|---|---|
-| **dev** | k3s (VPS 8c/32GB) | Traefik IngressRoute | PostgreSQL StatefulSet | `axiomnode-dev` |
+| **dev** | Local Docker Compose | Local ports (no public ingress) | Local PostgreSQL containers | N/A |
 | **stg** | k3s (VPS 8c/32GB) | Traefik IngressRoute | PostgreSQL StatefulSet | `axiomnode-stg` |
 | **prod** | Cloud (EKS/GKE/AKS) | Nginx Ingress + TLS | Managed (RDS/Cloud SQL) | `axiomnode-prod` |
 
 ## Quick Start
 
-### 1. Setup k3s (dev/stg)
+### 1. Run local dev stack
+
+```bash
+./scripts/dev-local-stack.sh up cpu
+```
+
+### 2. Setup k3s (stg)
 
 ```bash
 # On the VPS
 sudo ./scripts/setup-k3s.sh
 ```
 
-### 2. Create Secrets
+### 3. Create Secrets
 
 ```bash
 # Create a secrets file (not committed to git)
@@ -49,15 +57,12 @@ cp secrets/dev.env.example secrets/dev.env
 ./scripts/seal-secrets.sh dev
 ```
 
-### 3. Deploy
+### 4. Deploy
 
 ```bash
 # Required for private GHCR pulls when using scripts/deploy.sh manually
 export GHCR_PULL_USERNAME=<github-username>
 export GHCR_PULL_TOKEN=<token-with-read-packages>
-
-# Deploy to dev
-./scripts/deploy.sh dev
 
 # Deploy to staging
 ./scripts/deploy.sh stg
@@ -66,10 +71,10 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ./scripts/deploy.sh prod
 ```
 
-### 4. Run Migrations
+### 5. Run Migrations
 
 ```bash
-./scripts/migrate-db.sh dev
+./scripts/migrate-db.sh stg
 ```
 
 ## Services
@@ -91,7 +96,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ## CI/CD
 
 - **Build & Push** (`.github/workflows/build-push.yaml`): Detects changed services, builds Docker images, pushes to GHCR.
-- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `dev` only.
+- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `stg`.
 
 ### Required GitHub Secrets
 

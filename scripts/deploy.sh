@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # deploy.sh — Deploy AxiomNode to a specific environment
-# Usage: ./deploy.sh <dev|stg|prod>
+# Usage: ./deploy.sh <stg|prod>
 set -euo pipefail
 
-ENV="${1:?Usage: $0 <dev|stg|prod>}"
+ENV="${1:?Usage: $0 <stg|prod>}"
+
+if [[ "$ENV" != "stg" && "$ENV" != "prod" ]]; then
+  echo "Error: '$ENV' is not a valid Kubernetes target."
+  echo "Use 'stg' or 'prod'."
+  echo "For local development (dev), use: ./scripts/dev-local-stack.sh up"
+  exit 1
+fi
+
 OVERLAY_DIR="kubernetes/overlays/${ENV}"
 KUBECTL="kubectl"
 

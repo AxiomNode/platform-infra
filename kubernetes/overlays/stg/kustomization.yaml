@@ -11,6 +11,7 @@ resources:
 patches:
   - path: patches/replicas.yaml
   - path: patches/llama-resources.yaml
+  - path: patches/llama-model-bootstrap.yaml
 
 configMapGenerator:
   - name: ai-engine-api-config
@@ -21,6 +22,10 @@ configMapGenerator:
   - name: ai-engine-stats-config
     literals:
       - DISTRIBUTION=stg
+  - name: ai-engine-llama-config
+    literals:
+      - LLAMA_MODEL_FILE=Qwen2.5-3B-Instruct-Q4_K_M.gguf
+      - LLAMA_MODEL_URL=https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
   - name: microservice-quizz-config
     literals:
       - DISTRIBUTION=stg

@@ -3,7 +3,15 @@
 # Usage: ./migrate-db.sh <environment>
 set -euo pipefail
 
-ENV="${1:?Usage: $0 <dev|stg|prod>}"
+ENV="${1:?Usage: $0 <stg|prod>}"
+
+if [[ "$ENV" != "stg" && "$ENV" != "prod" ]]; then
+  echo "Error: '$ENV' is not a valid Kubernetes target."
+  echo "Use 'stg' or 'prod'."
+  echo "For local development (dev), use local compose migrations per service."
+  exit 1
+fi
+
 NAMESPACE="axiomnode-${ENV}"
 KUBECTL="kubectl"
 

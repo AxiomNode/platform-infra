@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-llama
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: model-bootstrap
+          image: busybox:1.36
+          command:
+            - sh
+            - -ec
+            - |
+              set -e
+              MODEL_FILE="${LLAMA_MODEL_FILE:-Qwen2.5-3B-Instruct-Q4_K_M.gguf}"
+              MODEL_URL="${LLAMA_MODEL_URL:-}"
+
+              if [ -z "$MODEL_URL" ]; then
+                echo "LLAMA_MODEL_URL is empty"
+                exit 1
+              fi
+
+              if [ -f "/models/$MODEL_FILE" ]; then
+                echo "Model already present: /models/$MODEL_FILE"
+                exit 0
+              fi
+
+              echo "Downloading model from $MODEL_URL"
+              wget -O "/models/$MODEL_FILE.part" "$MODEL_URL"
+              mv "/models/$MODEL_FILE.part" "/models/$MODEL_FILE"
+              ls -lah /models
+          env:
+            - name: LLAMA_MODEL_FILE
+              value: Qwen2.5-3B-Instruct-Q4_K_M.gguf
+            - name: LLAMA_MODEL_URL
+              value: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+          envFrom:
+            - configMapRef:
+                name: ai-engine-llama-config
+                optional: true
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          env:
+            - name: LLAMA_MODEL_FILE
+              value: Qwen2.5-3B-Instruct-Q4_K_M.gguf

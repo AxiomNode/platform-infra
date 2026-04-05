@@ -12,10 +12,11 @@ on:
         required: true
         type: choice
         options:
-          - dev
+          - stg
+          - prod
 
 concurrency:
-  group: deploy-dev
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
   cancel-in-progress: false
 
 jobs:
@@ -25,14 +26,18 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     environment:
-      name: dev
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Determine environment
         id: env
         run: |
-          echo "env=dev" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=stg" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Validate manifests
         run: |
@@ -45,7 +50,7 @@ jobs:
           kustomize build "kubernetes/overlays/${ENV}" > /dev/null
           echo "Manifests valid."
 
-      - name: Deploy to k3s (dev)
+      - name: Deploy to k3s (stg/prod)
         env:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -96,7 +101,7 @@ jobs:
             "NAMESPACE=axiomnode-${ENV} && \
              for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
                echo \"Restarting \$deploy...\" && \
-               k3s kubectl rollout restart deployment/\$deploy -n \$NAMESPACE || true; \
+               k3s kubectl rollout restart deployment/\$deploy -n \$NAMESPACE; \
              done"
 
           # Wait for rollouts
@@ -104,8 +109,23 @@ jobs:
             "NAMESPACE=axiomnode-${ENV} && \
              for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
                echo \"Waiting for \$deploy...\" && \
-               k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s || true; \
-             done" || true
+               k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s; \
+             done"
+
+          # Verify desired replicas are available after rollout.
+          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+            "set -euo pipefail; \
+             NAMESPACE=axiomnode-${ENV}; \
+             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
+               desired=\$(k3s kubectl get deployment/\$deploy -n \$NAMESPACE -o jsonpath='{.spec.replicas}'); \
+               available=\$(k3s kubectl get deployment/\$deploy -n \$NAMESPACE -o jsonpath='{.status.availableReplicas}'); \
+               available=\${available:-0}; \
+               echo \"Replica check \$deploy: desired=\$desired available=\$available\"; \
+               if [ \"\$available\" -lt \"\$desired\" ]; then \
+                 echo \"Deployment \$deploy does not have enough available replicas\"; \
+                 exit 1; \
+               fi; \
+             done"
 
       - name: Smoke test
         run: |

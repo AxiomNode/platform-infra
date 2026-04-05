@@ -8,6 +8,25 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - Environment-specific compose assets.
 - Infrastructure validation and deployment automation.
 - Cross-repository image build orchestration.
+- Dev local orchestration for full-stack container runtime.
+
+## Distribution Logic
+
+- `dev`
+	- Local-only distribution.
+	- Full stack runs via Docker Compose on a developer machine.
+	- Service-to-service connections are local (localhost/host.docker.internal).
+	- Entry point: `scripts/dev-local-stack.sh`.
+
+- `stg`
+	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
+	- Public domains route through ingress.
+	- CI/CD auto-deploy target after successful image builds on `main`.
+
+- `prod`
+	- Final distribution tier for production scalability.
+	- Can run distributed services and external cloud-managed resources (DB, ingress, scaling).
+	- Deployment is manual/controlled, not the default automatic target.
 
 ## Repository structure
 
@@ -31,15 +50,32 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 
 - `deploy.yaml` (Deploy to Kubernetes)
 	- Trigger: successful completion of `build-push.yaml` on `main`, or manual dispatch.
-	- Current policy: automatic deployment is pinned to `dev` only.
+	- Current policy: automatic deployment is pinned to `stg`.
 	- Purpose: validates manifests, syncs overlays to k3s, applies manifests, restarts deployments, and waits for rollout.
+	- Safety: rollout status + available replica checks fail the workflow if services are not healthy.
 
 ## Current automation chain
 
 1. A service repo receives a push on `main`.
 2. That repo CI dispatches `platform-infra/.github/workflows/build-push.yaml` with a service input.
 3. Build/push publishes updated image tags in GHCR.
-4. `deploy.yaml` runs and applies changes to `axiomnode-dev`.
+4. `deploy.yaml` runs and applies changes to `axiomnode-stg`.
+
+## Local Dev Stack
+
+Run all dev services locally with a single script:
+
+```bash
+./scripts/dev-local-stack.sh up cpu
+```
+
+Useful commands:
+
+```bash
+./scripts/dev-local-stack.sh status
+./scripts/dev-local-stack.sh logs api-gateway
+./scripts/dev-local-stack.sh down
+```
 
 ## Required secrets in this repository
 
