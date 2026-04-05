@@ -49,6 +49,7 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
   - name: bff-mobile-config
     literals:
       - SERVICE_NAME=bff-mobile
