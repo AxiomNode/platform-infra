@@ -61,6 +61,9 @@ configMapGenerator:
     literals:
       - SERVICE_NAME=bff-backoffice
       - SERVICE_PORT=7011
+      - API_GATEWAY_URL=http://api-gateway:7005
+      - BFF_MOBILE_URL=http://bff-mobile:7010
+      - AI_ENGINE_API_URL=http://ai-engine-api:8001
       - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=stg
       - LOG_LEVEL=info

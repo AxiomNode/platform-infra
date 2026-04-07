@@ -18,12 +18,21 @@ spec:
         app.kubernetes.io/component: frontend
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: backoffice
-          image: ghcr.io/axiomnode/backoffice:latest
+          image: ghcr.io/axiomnode/backoffice:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 101
+            runAsGroup: 101
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
           envFrom:
             - configMapRef:
@@ -42,7 +51,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
@@ -50,7 +59,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 5

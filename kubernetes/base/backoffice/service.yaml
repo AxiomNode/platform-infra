@@ -12,5 +12,5 @@ spec:
     app.kubernetes.io/name: backoffice
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
