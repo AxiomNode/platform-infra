@@ -10,6 +10,7 @@ resources:
 
 patches:
   - path: patches/replicas.yaml
+  - path: patches/ai-engine-runtime-tuning.yaml
   - path: patches/llama-resources.yaml
   - path: patches/llama-model-bootstrap.yaml
 

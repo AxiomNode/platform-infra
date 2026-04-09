@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-api
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: ai-engine-api
+          env:
+            - name: UVICORN_WORKERS
+              value: "1"
