@@ -15,6 +15,9 @@ on:
           - stg
           - prod
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
   cancel-in-progress: false
@@ -72,7 +75,7 @@ jobs:
           echo "$K3S_SSH_KEY" > ~/.ssh/k3s_key
           chmod 600 ~/.ssh/k3s_key
           ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          SSH_OPTS="-i ~/.ssh/k3s_key -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
+          SSH_OPTS="-i ~/.ssh/k3s_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
 
           # Ensure remote workspace exists in user-owned path.
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
@@ -104,31 +107,50 @@ jobs:
                k3s kubectl rollout restart deployment/\$deploy -n \$NAMESPACE; \
              done"
 
-          # Wait for rollouts
-          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-            "NAMESPACE=axiomnode-${ENV} && \
-             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
-               echo \"Waiting for \$deploy...\" && \
-               k3s kubectl rollout status deployment/\$deploy -n \$NAMESPACE --timeout=300s; \
-             done"
+          DEPLOYS=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+            "k3s kubectl get deployments -n '${NAMESPACE}' -o jsonpath='{.items[*].metadata.name}'")
+
+          # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
+          for deploy in ${DEPLOYS}; do
+            echo "Waiting for ${deploy}..."
+            ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=300s"
+          done
 
           # Verify desired replicas are available after rollout.
-          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-            "set -euo pipefail; \
-             NAMESPACE=axiomnode-${ENV}; \
-             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
-               desired=\$(k3s kubectl get deployment/\$deploy -n \$NAMESPACE -o jsonpath='{.spec.replicas}'); \
-               available=\$(k3s kubectl get deployment/\$deploy -n \$NAMESPACE -o jsonpath='{.status.availableReplicas}'); \
-               available=\${available:-0}; \
-               echo \"Replica check \$deploy: desired=\$desired available=\$available\"; \
-               if [ \"\$available\" -lt \"\$desired\" ]; then \
-                 echo \"Deployment \$deploy does not have enough available replicas\"; \
-                 exit 1; \
-               fi; \
-             done"
+          for deploy in ${DEPLOYS}; do
+            desired=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.replicas}'")
+            available=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.status.availableReplicas}'")
+            available=${available:-0}
+            echo "Replica check ${deploy}: desired=${desired} available=${available}"
+            if [ "${available}" -lt "${desired}" ]; then
+              echo "Deployment ${deploy} does not have enough available replicas"
+              exit 1
+            fi
+          done
 
       - name: Smoke test
         run: |
           ENV="${{ steps.env.outputs.env }}"
           echo "Deployment to ${ENV} completed."
-          echo "Run smoke tests manually or via the existing smoke-edge.sh script."
+
+          if [[ "${ENV}" == "stg" ]]; then
+            GATEWAY_BASE="https://axiomnode-gateway.amksandbox.cloud"
+
+            gateway_health=$(curl -sS -o /tmp/gateway-health.json -w "%{http_code}" "${GATEWAY_BASE}/health")
+            quiz_random=$(curl -sS -o /tmp/quiz-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/quiz/random?language=es")
+            wordpass_random=$(curl -sS -o /tmp/wordpass-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/wordpass/random?language=es")
+            backoffice_services=$(curl -sS -o /tmp/backoffice-services.json -w "%{http_code}" "${GATEWAY_BASE}/v1/backoffice/services")
+
+            echo "gateway /health -> ${gateway_health}"
+            echo "mobile quiz random -> ${quiz_random}"
+            echo "mobile wordpass random -> ${wordpass_random}"
+            echo "backoffice services -> ${backoffice_services}"
+
+            [[ "${gateway_health}" == "200" ]] || { echo "Gateway health check failed"; cat /tmp/gateway-health.json; exit 1; }
+            [[ "${backoffice_services}" == "401" ]] || { echo "Backoffice route is no longer protected"; cat /tmp/backoffice-services.json; exit 1; }
+            [[ "${quiz_random}" != "401" && "${quiz_random}" != "403" ]] || { echo "Quiz random route is still protected"; cat /tmp/quiz-random.json; exit 1; }
+            [[ "${wordpass_random}" != "401" && "${wordpass_random}" != "403" ]] || { echo "Wordpass random route is still protected"; cat /tmp/wordpass-random.json; exit 1; }
+          fi
