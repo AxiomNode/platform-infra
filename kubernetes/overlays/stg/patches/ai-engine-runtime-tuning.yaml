@@ -11,3 +11,10 @@ spec:
           env:
             - name: UVICORN_WORKERS
               value: "1"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
