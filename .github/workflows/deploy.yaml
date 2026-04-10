@@ -113,8 +113,21 @@ jobs:
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
           for deploy in ${DEPLOYS}; do
             echo "Waiting for ${deploy}..."
-            ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-              "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=300s"
+            if ! ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=300s"; then
+              echo "Rollout failed for ${deploy}. Collecting diagnostics..."
+              ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+                "set +e; \
+                 echo '=== deployment describe ==='; \
+                 k3s kubectl describe deployment/${deploy} -n '${NAMESPACE}'; \
+                 echo '=== replica sets ==='; \
+                 k3s kubectl get rs -n '${NAMESPACE}' --sort-by=.metadata.creationTimestamp; \
+                 echo '=== pods wide ==='; \
+                 k3s kubectl get pods -n '${NAMESPACE}' -o wide; \
+                 echo '=== recent events ==='; \
+                 k3s kubectl get events -n '${NAMESPACE}' --sort-by=.lastTimestamp | tail -n 50"
+              exit 1
+            fi
           done
 
           # Verify desired replicas are available after rollout.
