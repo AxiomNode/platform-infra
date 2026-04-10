@@ -14,13 +14,30 @@ on:
         options:
           - stg
           - prod
+      service:
+        description: "Service to deploy (or 'all')"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - ai-engine-api
+          - ai-engine-stats
+          - microservice-quizz
+          - microservice-wordpass
+          - microservice-users
+          - api-gateway
+          - bff-mobile
+          - bff-backoffice
+          - backoffice
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
   group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -42,7 +59,73 @@ jobs:
             echo "env=stg" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Determine target deployments
+        id: targets
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          map_service_to_deployment() {
+            case "$1" in
+              ai-engine-api) echo "ai-engine-api" ;;
+              ai-engine-stats) echo "ai-engine-stats" ;;
+              microservice-quizz) echo "microservice-quizz-api" ;;
+              microservice-wordpass) echo "microservice-wordpass-api" ;;
+              microservice-users) echo "microservice-users-api" ;;
+              api-gateway) echo "api-gateway" ;;
+              bff-mobile) echo "bff-mobile" ;;
+              bff-backoffice) echo "bff-backoffice" ;;
+              backoffice) echo "backoffice" ;;
+              *) return 1 ;;
+            esac
+          }
+
+          ALL_DEPLOYMENTS="ai-engine-api ai-engine-cache ai-engine-llama ai-engine-stats api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            service_input="${{ inputs.service }}"
+            if [[ "${service_input}" == "all" ]]; then
+              deployments="${ALL_DEPLOYMENTS}"
+            else
+              deployments="$(map_service_to_deployment "${service_input}")"
+            fi
+          else
+            run_id="${{ github.event.workflow_run.id }}"
+            jobs_json=$(curl -fsSL \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/runs/${run_id}/jobs?per_page=100")
+
+            services=$(jq -r '.jobs[] | select(.conclusion == "success") | .name' <<<"${jobs_json}" \
+              | sed -n 's/^build-push (\(.*\))$/\1/p' \
+              | sort -u)
+
+            if [[ -z "${services}" ]]; then
+              echo "deployments=" >> "$GITHUB_OUTPUT"
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              echo "No successful build-push service jobs detected. Skipping deployment refresh."
+              exit 0
+            fi
+
+            deployments=""
+            while IFS= read -r service; do
+              [[ -n "${service}" ]] || continue
+              deploy_name=$(map_service_to_deployment "${service}")
+              if [[ " ${deployments} " != *" ${deploy_name} "* ]]; then
+                deployments="${deployments} ${deploy_name}"
+              fi
+            done <<< "${services}"
+
+            deployments=$(echo "${deployments}" | xargs)
+          fi
+
+          echo "deployments=${deployments}" >> "$GITHUB_OUTPUT"
+          echo "mode=apply" >> "$GITHUB_OUTPUT"
+          echo "Target deployments: ${deployments}"
+
       - name: Validate manifests
+        if: steps.targets.outputs.mode == 'apply'
         run: |
           # Install kustomize
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
@@ -54,6 +137,7 @@ jobs:
           echo "Manifests valid."
 
       - name: Deploy to k3s (stg/prod)
+        if: steps.targets.outputs.mode == 'apply'
         env:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -61,9 +145,11 @@ jobs:
           K3S_SSH_KEY: ${{ secrets.K3S_SSH_KEY }}
           K3S_USER: ${{ secrets.K3S_USER }}
         run: |
+          set -euo pipefail
           ENV="${{ steps.env.outputs.env }}"
           NAMESPACE="axiomnode-${ENV}"
           REMOTE_DIR="/home/${K3S_USER}/axiomnode"
+          TARGET_DEPLOYS="${{ steps.targets.outputs.deployments }}"
 
           if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
             echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
@@ -99,19 +185,15 @@ jobs:
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "cd '${REMOTE_DIR}' && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
 
-          # Force a restart so mutable tags (dev/stg) are re-evaluated on deploy runs.
-          ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-            "NAMESPACE=axiomnode-${ENV} && \
-             for deploy in \$(k3s kubectl get deployments -n \$NAMESPACE -o jsonpath='{.items[*].metadata.name}'); do \
-               echo \"Restarting \$deploy...\" && \
-               k3s kubectl rollout restart deployment/\$deploy -n \$NAMESPACE; \
-             done"
-
-          DEPLOYS=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-            "k3s kubectl get deployments -n '${NAMESPACE}' -o jsonpath='{.items[*].metadata.name}'")
+          # Force restarts only for deployments that were actually targeted by the triggering build/run.
+          for deploy in ${TARGET_DEPLOYS}; do
+            echo "Restarting ${deploy}..."
+            ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl rollout restart deployment/${deploy} -n '${NAMESPACE}'"
+          done
 
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
-          for deploy in ${DEPLOYS}; do
+          for deploy in ${TARGET_DEPLOYS}; do
             echo "Waiting for ${deploy}..."
             if ! ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
               "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=300s"; then
@@ -131,7 +213,7 @@ jobs:
           done
 
           # Verify desired replicas are available after rollout.
-          for deploy in ${DEPLOYS}; do
+          for deploy in ${TARGET_DEPLOYS}; do
             desired=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
               "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.replicas}'")
             available=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
@@ -144,26 +226,39 @@ jobs:
             fi
           done
 
-      - name: Smoke test
+      - name: Skip no-op workflow_run deploy
+        if: steps.targets.outputs.mode == 'skip'
         run: |
+          echo "No successful service image builds were detected in the triggering workflow run."
+          echo "Skipping staging deployment refresh."
+
+      - name: Smoke test
+        if: steps.targets.outputs.mode == 'apply'
+        run: |
+          set -euo pipefail
           ENV="${{ steps.env.outputs.env }}"
+          TARGET_DEPLOYS="${{ steps.targets.outputs.deployments }}"
           echo "Deployment to ${ENV} completed."
 
           if [[ "${ENV}" == "stg" ]]; then
             GATEWAY_BASE="https://axiomnode-gateway.amksandbox.cloud"
 
             gateway_health=$(curl -sS -o /tmp/gateway-health.json -w "%{http_code}" "${GATEWAY_BASE}/health")
-            quiz_random=$(curl -sS -o /tmp/quiz-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/quiz/random?language=es")
-            wordpass_random=$(curl -sS -o /tmp/wordpass-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/wordpass/random?language=es")
-            backoffice_services=$(curl -sS -o /tmp/backoffice-services.json -w "%{http_code}" "${GATEWAY_BASE}/v1/backoffice/services")
-
             echo "gateway /health -> ${gateway_health}"
-            echo "mobile quiz random -> ${quiz_random}"
-            echo "mobile wordpass random -> ${wordpass_random}"
-            echo "backoffice services -> ${backoffice_services}"
 
             [[ "${gateway_health}" == "200" ]] || { echo "Gateway health check failed"; cat /tmp/gateway-health.json; exit 1; }
-            [[ "${backoffice_services}" == "401" ]] || { echo "Backoffice route is no longer protected"; cat /tmp/backoffice-services.json; exit 1; }
-            [[ "${quiz_random}" != "401" && "${quiz_random}" != "403" ]] || { echo "Quiz random route is still protected"; cat /tmp/quiz-random.json; exit 1; }
-            [[ "${wordpass_random}" != "401" && "${wordpass_random}" != "403" ]] || { echo "Wordpass random route is still protected"; cat /tmp/wordpass-random.json; exit 1; }
+
+            if [[ " ${TARGET_DEPLOYS} " == *" api-gateway "* ]]; then
+              quiz_random=$(curl -sS -o /tmp/quiz-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/quiz/random?language=es")
+              wordpass_random=$(curl -sS -o /tmp/wordpass-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/wordpass/random?language=es")
+              backoffice_services=$(curl -sS -o /tmp/backoffice-services.json -w "%{http_code}" "${GATEWAY_BASE}/v1/backoffice/services")
+
+              echo "mobile quiz random -> ${quiz_random}"
+              echo "mobile wordpass random -> ${wordpass_random}"
+              echo "backoffice services -> ${backoffice_services}"
+
+              [[ "${backoffice_services}" == "401" ]] || { echo "Backoffice route is no longer protected"; cat /tmp/backoffice-services.json; exit 1; }
+              [[ "${quiz_random}" != "401" && "${quiz_random}" != "403" ]] || { echo "Quiz random route is still protected"; cat /tmp/quiz-random.json; exit 1; }
+              [[ "${wordpass_random}" != "401" && "${wordpass_random}" != "403" ]] || { echo "Wordpass random route is still protected"; cat /tmp/wordpass-random.json; exit 1; }
+            fi
           fi
