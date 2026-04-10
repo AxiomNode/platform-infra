@@ -195,8 +195,15 @@ jobs:
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
           for deploy in ${TARGET_DEPLOYS}; do
             echo "Waiting for ${deploy}..."
+              rollout_timeout=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+                "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.progressDeadlineSeconds}'")
+              rollout_timeout=${rollout_timeout:-600}
+              if ! [[ "${rollout_timeout}" =~ ^[0-9]+$ ]]; then
+                rollout_timeout=600
+              fi
+              echo "Using rollout timeout ${rollout_timeout}s for ${deploy}"
             if ! ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-              "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=300s"; then
+                "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=${rollout_timeout}s"; then
               echo "Rollout failed for ${deploy}. Collecting diagnostics..."
               ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
                 "set +e; \
@@ -206,6 +213,16 @@ jobs:
                  k3s kubectl get rs -n '${NAMESPACE}' --sort-by=.metadata.creationTimestamp; \
                  echo '=== pods wide ==='; \
                  k3s kubectl get pods -n '${NAMESPACE}' -o wide; \
+                   echo '=== target pods ==='; \
+                   k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o wide; \
+                   for pod in \$(k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o name); do \
+                     echo \"=== describe \${pod} ===\"; \
+                     k3s kubectl describe -n '${NAMESPACE}' \"\${pod}\"; \
+                     echo \"=== logs current \${pod} ===\"; \
+                     k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --tail=200; \
+                     echo \"=== logs previous \${pod} ===\"; \
+                     k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --previous --tail=200; \
+                   done; \
                  echo '=== recent events ==='; \
                  k3s kubectl get events -n '${NAMESPACE}' --sort-by=.lastTimestamp | tail -n 50"
               exit 1

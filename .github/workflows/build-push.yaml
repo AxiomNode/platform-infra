@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - id: changes
         name: Detect changed services
@@ -59,7 +59,14 @@ jobs:
           fi
 
           SERVICES=()
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          BASE_SHA="${{ github.event.before }}"
+          HEAD_SHA="${{ github.sha }}"
+
+          if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
+            CHANGED=$(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+          else
+            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
+          fi
 
           declare -A SERVICE_MAP=(
             ["ai-engine/"]="ai-engine-api ai-engine-stats"
