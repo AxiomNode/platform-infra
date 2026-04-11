@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: api
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: ai-engine-api
-          image: ghcr.io/axiomnode/ai-engine-api:latest
+          image: ghcr.io/axiomnode/ai-engine-api:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           ports:
             - containerPort: 8001
               protocol: TCP

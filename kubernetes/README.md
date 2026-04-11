@@ -57,6 +57,9 @@ cp secrets/dev.env.example secrets/dev.env
 ./scripts/seal-secrets.sh dev
 ```
 
+For production overlays, add sealed manifests under `kubernetes/overlays/prod/sealed-secrets/`
+and list them in `kubernetes/overlays/prod/sealed-secrets/kustomization.yaml`.
+
 ### 4. Deploy
 
 ```bash

@@ -20,9 +20,16 @@ spec:
         app.kubernetes.io/component: llm
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: llama-server
           image: ghcr.io/ggml-org/llama.cpp:server
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           args:
             - "--host"
             - "0.0.0.0"

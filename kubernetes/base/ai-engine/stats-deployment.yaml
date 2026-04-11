@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: stats
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: ai-engine-stats
-          image: ghcr.io/axiomnode/ai-engine-stats:latest
+          image: ghcr.io/axiomnode/ai-engine-stats:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           ports:
             - containerPort: 8000
               protocol: TCP

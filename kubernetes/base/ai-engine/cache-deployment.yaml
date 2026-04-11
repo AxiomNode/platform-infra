@@ -18,9 +18,19 @@ spec:
         app.kubernetes.io/component: cache
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
           command:
             - redis-server
             - "--appendonly"

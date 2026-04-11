@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: api
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: microservice-quizz
-          image: ghcr.io/axiomnode/microservice-quizz-api:latest
+          image: ghcr.io/axiomnode/microservice-quizz-api:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"

@@ -1,0 +1,6 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Add prod sealed secrets manifests in this folder and list them under resources.
+# Keeping this file allows overlay validation even before provisioning prod secrets.
+resources: []

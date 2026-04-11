@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: api
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: microservice-wordpass
-          image: ghcr.io/axiomnode/microservice-wordpass-api:latest
+          image: ghcr.io/axiomnode/microservice-wordpass-api:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           command: ["sh", "-c"]
           args:
             - "npx prisma migrate deploy && node dist/app/server.js"

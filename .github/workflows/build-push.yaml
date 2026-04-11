@@ -24,6 +24,11 @@ on:
           - bff-mobile
           - bff-backoffice
           - backoffice
+      publish_prod_tag:
+        description: "Also publish mutable :prod tag (manual promotion only)"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -218,7 +223,10 @@ jobs:
           )
 
           if [[ "$BRANCH" == "main" ]]; then
-            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:stg,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:latest,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
+            TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:stg,${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.publish_prod_tag }}" == "true" ]]; then
+              TAGS="${TAGS},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:prod"
+            fi
           else
             TAGS="${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:${TAG},${REGISTRY}/${REGISTRY_ORG}/${IMAGE_NAME}:dev"
           fi

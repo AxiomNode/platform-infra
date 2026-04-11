@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: bff
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: bff-backoffice
-          image: ghcr.io/axiomnode/bff-backoffice:latest
+          image: ghcr.io/axiomnode/bff-backoffice:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           ports:
             - containerPort: 7011
               protocol: TCP

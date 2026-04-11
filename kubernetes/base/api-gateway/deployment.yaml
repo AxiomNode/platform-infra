@@ -18,10 +18,17 @@ spec:
         app.kubernetes.io/component: gateway
         app.kubernetes.io/part-of: axiomnode
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api-gateway
-          image: ghcr.io/axiomnode/api-gateway:latest
+          image: ghcr.io/axiomnode/api-gateway:stg
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
           ports:
             - containerPort: 7005
               protocol: TCP

@@ -46,7 +46,8 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 	- Purpose: detects changed services (or selected service), checks out source repos, and publishes images to GHCR.
 	- Notes:
 		- Uses `CROSS_REPO_READ_TOKEN` to access private source repos.
-		- Publishes `dev` tags, and on `main` also publishes `stg` and `latest`.
+		- Publishes `dev` tags, and on `main` also publishes `stg`.
+		- Optional `publish_prod_tag=true` on manual dispatch adds mutable `prod` tags for controlled production promotion.
 
 - `deploy.yaml` (Deploy to Kubernetes)
 	- Trigger: successful completion of `build-push.yaml` on `main`, or manual dispatch.

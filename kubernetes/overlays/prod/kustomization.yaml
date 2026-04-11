@@ -52,20 +52,20 @@ configMapGenerator:
 
 images:
   - name: ghcr.io/axiomnode/ai-engine-api
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/ai-engine-stats
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/microservice-quizz-api
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/microservice-wordpass-api
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/microservice-users-api
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/api-gateway
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/bff-mobile
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/bff-backoffice
-    newTag: latest
+    newTag: prod
   - name: ghcr.io/axiomnode/backoffice
-    newTag: latest
+    newTag: prod
