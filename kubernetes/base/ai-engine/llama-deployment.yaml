@@ -65,6 +65,13 @@ spec:
             limits:
               cpu: "4000m"
               memory: "10Gi"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health
