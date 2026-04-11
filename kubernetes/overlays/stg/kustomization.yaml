@@ -51,6 +51,7 @@ configMapGenerator:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
       - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
+      - UPSTREAM_TIMEOUT_MS=30000
   - name: bff-mobile-config
     literals:
       - SERVICE_NAME=bff-mobile
@@ -58,6 +59,7 @@ configMapGenerator:
       - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - UPSTREAM_TIMEOUT_MS=30000
   - name: bff-backoffice-config
     literals:
       - SERVICE_NAME=bff-backoffice
