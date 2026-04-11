@@ -23,4 +23,4 @@ spec:
             - name: LLAMA_CTX_SIZE
               value: "2048"
             - name: LLAMA_PARALLEL
-              value: "2"
+              value: "1"
