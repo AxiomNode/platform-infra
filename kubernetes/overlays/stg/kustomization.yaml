@@ -17,11 +17,14 @@ patches:
 configMapGenerator:
   - name: ai-engine-api-config
     literals:
+      - AI_ENGINE_DISTRIBUTION=stg
+      - AI_ENGINE_STATS_URL=http://ai-engine-stats:8000
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
       - WORKERS=2
   - name: ai-engine-stats-config
     literals:
+      - AI_ENGINE_DISTRIBUTION=stg
       - DISTRIBUTION=stg
   - name: ai-engine-llama-config
     literals:
