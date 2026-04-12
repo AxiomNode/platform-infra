@@ -31,7 +31,7 @@ spec:
             runAsNonRoot: true
           command: ["sh", "-c"]
           args:
-            - "npx prisma migrate deploy && node dist/app/server.js"
+            - "npx prisma db push && node dist/app/server.js"
           ports:
             - containerPort: 7100
               protocol: TCP

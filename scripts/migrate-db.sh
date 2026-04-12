@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# migrate-db.sh — Run Prisma migrations for all microservices
+# migrate-db.sh — Synchronize Prisma schemas for all microservices
 # Usage: ./migrate-db.sh <environment>
 set -euo pipefail
 
@@ -21,11 +21,11 @@ fi
 
 SERVICES=("microservice-quizz-api" "microservice-wordpass-api" "microservice-users-api")
 
-echo "=== Running Prisma migrations for ${ENV} ==="
+echo "=== Synchronizing Prisma schemas for ${ENV} ==="
 
 for svc in "${SERVICES[@]}"; do
   echo ""
-  echo "--- Migrating: ${svc} ---"
+  echo "--- Syncing schema: ${svc} ---"
   POD=$($KUBECTL get pods -n "$NAMESPACE" -l "app.kubernetes.io/name=${svc}" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
 
   if [[ -z "$POD" ]]; then
@@ -34,9 +34,9 @@ for svc in "${SERVICES[@]}"; do
   fi
 
   echo "Pod: ${POD}"
-  $KUBECTL exec -n "$NAMESPACE" "$POD" -- npx prisma migrate deploy
-  echo "${svc}: migration complete."
+  $KUBECTL exec -n "$NAMESPACE" "$POD" -- npx prisma db push
+  echo "${svc}: schema sync complete."
 done
 
 echo ""
-echo "=== All migrations complete ==="
+echo "=== All schema sync operations complete ==="
