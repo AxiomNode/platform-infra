@@ -32,3 +32,9 @@ jobs:
             echo "${bad_refs}"
             exit 1
           fi
+      - name: Render Kubernetes overlays with kustomize
+        run: |
+          set -euo pipefail
+          kubectl kustomize kubernetes/overlays/dev > /tmp/dev-rendered.yaml
+          kubectl kustomize kubernetes/overlays/stg > /tmp/stg-rendered.yaml
+          kubectl kustomize kubernetes/overlays/prod > /tmp/prod-rendered.yaml

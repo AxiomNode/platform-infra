@@ -39,7 +39,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 
 - `validate-infra.yml`
 	- Trigger: push (`main`, `develop`), pull request, manual dispatch.
-	- Purpose: validates required infrastructure directories.
+	- Purpose: validates required infrastructure directories, blocks mutable Kubernetes `:latest` image tags, and renders `dev`/`stg`/`prod` overlays with `kubectl kustomize`.
 
 - `build-push.yaml` (Build & Push Docker Images)
 	- Trigger: push (`main`, `develop`) and manual dispatch.
