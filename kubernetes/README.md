@@ -99,7 +99,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ## CI/CD
 
 - **Build & Push** (`.github/workflows/build-push.yaml`): Detects changed services, builds Docker images, pushes to GHCR.
-- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `stg`.
+- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `stg`. Automatic deploys render manifests with immutable image tags from the triggering build run; manual deploys keep the environment tags and perform forced restarts when needed.
 
 ### Required GitHub Secrets
 

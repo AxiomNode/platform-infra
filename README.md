@@ -52,7 +52,10 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - `deploy.yaml` (Deploy to Kubernetes)
 	- Trigger: successful completion of `build-push.yaml` on `main`, or manual dispatch.
 	- Current policy: automatic deployment is pinned to `stg`.
-	- Purpose: validates manifests, syncs overlays to k3s, applies manifests, restarts deployments, and waits for rollout.
+	- Purpose: validates manifests, renders the selected overlay, applies manifests to k3s, and waits for rollout.
+	- Notes:
+		- Workflow-driven staging deploys pin changed services to the immutable short-SHA tags produced by the triggering build run.
+		- Manual deploys keep the environment tags (`stg`/`prod`) and still force restarts when a mutable tag must be refreshed.
 	- Safety: rollout status + available replica checks fail the workflow if services are not healthy.
 
 ## Current automation chain

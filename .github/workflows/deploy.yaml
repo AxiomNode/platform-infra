@@ -81,7 +81,24 @@ jobs:
             esac
           }
 
+          map_service_to_image() {
+            case "$1" in
+              ai-engine-api) echo "ghcr.io/axiomnode/ai-engine-api" ;;
+              ai-engine-stats) echo "ghcr.io/axiomnode/ai-engine-stats" ;;
+              microservice-quizz) echo "ghcr.io/axiomnode/microservice-quizz-api" ;;
+              microservice-wordpass) echo "ghcr.io/axiomnode/microservice-wordpass-api" ;;
+              microservice-users) echo "ghcr.io/axiomnode/microservice-users-api" ;;
+              api-gateway) echo "ghcr.io/axiomnode/api-gateway" ;;
+              bff-mobile) echo "ghcr.io/axiomnode/bff-mobile" ;;
+              bff-backoffice) echo "ghcr.io/axiomnode/bff-backoffice" ;;
+              backoffice) echo "ghcr.io/axiomnode/backoffice" ;;
+              *) return 1 ;;
+            esac
+          }
+
           ALL_DEPLOYMENTS="ai-engine-api ai-engine-cache ai-engine-llama ai-engine-stats api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api"
+          image_overrides=""
+          restart_after_apply="true"
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             service_input="${{ inputs.service }}"
@@ -118,11 +135,30 @@ jobs:
             done <<< "${services}"
 
             deployments=$(echo "${deployments}" | xargs)
+            image_tag="${{ github.event.workflow_run.head_sha }}"
+            image_tag="${image_tag::8}"
+            restart_after_apply="false"
+
+            while IFS= read -r service; do
+              [[ -n "${service}" ]] || continue
+              image_name=$(map_service_to_image "${service}")
+              image_overrides+="${image_name}=${image_name}:${image_tag}"
+              image_overrides+=$'\n'
+            done <<< "${services}"
           fi
 
           echo "deployments=${deployments}" >> "$GITHUB_OUTPUT"
+          echo "restart_after_apply=${restart_after_apply}" >> "$GITHUB_OUTPUT"
+          echo "image_overrides<<EOF" >> "$GITHUB_OUTPUT"
+          printf '%s' "${image_overrides}" >> "$GITHUB_OUTPUT"
+          echo >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
           echo "mode=apply" >> "$GITHUB_OUTPUT"
           echo "Target deployments: ${deployments}"
+          if [[ -n "${image_overrides}" ]]; then
+            echo "Using immutable image overrides from triggering build run:"
+            printf '%s' "${image_overrides}"
+          fi
 
       - name: Validate manifests
         if: steps.targets.outputs.mode == 'apply'
@@ -135,6 +171,33 @@ jobs:
           echo "Validating overlay: ${ENV}"
           kustomize build "kubernetes/overlays/${ENV}" > /dev/null
           echo "Manifests valid."
+
+      - name: Render deployment manifests
+        id: render
+        if: steps.targets.outputs.mode == 'apply'
+        env:
+          IMAGE_OVERRIDES: ${{ steps.targets.outputs.image_overrides }}
+        run: |
+          set -euo pipefail
+
+          ENV="${{ steps.env.outputs.env }}"
+          RENDER_DIR="$(mktemp -d)"
+          cp -R kubernetes "${RENDER_DIR}/"
+
+          if [[ -n "${IMAGE_OVERRIDES}" ]]; then
+            pushd "${RENDER_DIR}/kubernetes/overlays/${ENV}" > /dev/null
+            while IFS= read -r override; do
+              [[ -n "${override}" ]] || continue
+              kustomize edit set image "${override}"
+            done <<< "${IMAGE_OVERRIDES}"
+            popd > /dev/null
+          fi
+
+          rendered_manifest="${RENDER_DIR}/rendered-${ENV}.yaml"
+          kustomize build "${RENDER_DIR}/kubernetes/overlays/${ENV}" > "${rendered_manifest}"
+
+          echo "manifest=${rendered_manifest}" >> "$GITHUB_OUTPUT"
+          echo "Rendered manifests ready at ${rendered_manifest}"
 
       - name: Deploy to k3s (stg/prod)
         if: steps.targets.outputs.mode == 'apply'
@@ -150,6 +213,8 @@ jobs:
           NAMESPACE="axiomnode-${ENV}"
           REMOTE_DIR="/home/${K3S_USER}/axiomnode"
           TARGET_DEPLOYS="${{ steps.targets.outputs.deployments }}"
+          RENDERED_MANIFEST="${{ steps.render.outputs.manifest }}"
+          RESTART_AFTER_APPLY="${{ steps.targets.outputs.restart_after_apply }}"
 
           if [[ -z "${GHCR_PULL_USERNAME}" || -z "${GHCR_PULL_TOKEN}" ]]; then
             echo "GHCR_PULL_USERNAME and GHCR_PULL_TOKEN are required for private GHCR pulls."
@@ -166,11 +231,11 @@ jobs:
           # Ensure remote workspace exists in user-owned path.
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
-          # Copy manifests and apply
-          rsync -avz --delete \
+          # Copy rendered manifests and apply the exact image versions selected for this run.
+          rsync -avz \
             -e "ssh ${SSH_OPTS}" \
-            kubernetes/ \
-            "${K3S_USER}@${K3S_HOST}:${REMOTE_DIR}/kubernetes/"
+            "${RENDERED_MANIFEST}" \
+            "${K3S_USER}@${K3S_HOST}:${REMOTE_DIR}/rendered-${ENV}.yaml"
 
           # Ensure namespace has pull credentials for private GHCR images.
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
@@ -183,14 +248,18 @@ jobs:
              k3s kubectl patch serviceaccount default -n '${NAMESPACE}' --type=merge -p '{\"imagePullSecrets\":[{\"name\":\"ghcr-pull\"}]}'"
 
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-            "cd '${REMOTE_DIR}' && k3s kubectl apply -k kubernetes/overlays/${ENV}/"
+            "k3s kubectl apply -f '${REMOTE_DIR}/rendered-${ENV}.yaml'"
 
-          # Force restarts only for deployments that were actually targeted by the triggering build/run.
-          for deploy in ${TARGET_DEPLOYS}; do
-            echo "Restarting ${deploy}..."
-            ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-              "k3s kubectl rollout restart deployment/${deploy} -n '${NAMESPACE}'"
-          done
+          # Manual deploys still use mutable env tags and need an explicit restart.
+          if [[ "${RESTART_AFTER_APPLY}" == "true" ]]; then
+            for deploy in ${TARGET_DEPLOYS}; do
+              echo "Restarting ${deploy}..."
+              ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+                "k3s kubectl rollout restart deployment/${deploy} -n '${NAMESPACE}'"
+            done
+          else
+            echo "Skipping forced restarts because this deploy uses immutable image tags from the triggering build run."
+          fi
 
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
           for deploy in ${TARGET_DEPLOYS}; do
@@ -209,6 +278,9 @@ jobs:
                 "set +e; \
                  echo '=== deployment describe ==='; \
                  k3s kubectl describe deployment/${deploy} -n '${NAMESPACE}'; \
+                 echo '=== deployment image ==='; \
+                 k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.template.spec.containers[*].image}'; \
+                 echo; \
                  echo '=== replica sets ==='; \
                  k3s kubectl get rs -n '${NAMESPACE}' --sort-by=.metadata.creationTimestamp; \
                  echo '=== pods wide ==='; \
