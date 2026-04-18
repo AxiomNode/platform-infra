@@ -48,6 +48,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 	- Notes:
 		- Uses `CROSS_REPO_READ_TOKEN` to access private source repos.
 		- Publishes `dev` tags, and on `main` also publishes `stg`.
+		- Covered service repos dispatch this workflow only after their own validation jobs succeed on `main`.
 		- Optional `publish_prod_tag=true` on manual dispatch adds mutable `prod` tags for controlled production promotion.
 
 - `deploy.yaml` (Deploy to Kubernetes)
@@ -62,9 +63,25 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 ## Current automation chain
 
 1. A service repo receives a push on `main`.
-2. That repo CI dispatches `platform-infra/.github/workflows/build-push.yaml` with a service input.
-3. Build/push publishes updated image tags in GHCR.
-4. `deploy.yaml` runs and applies changes to `axiomnode-stg`.
+2. That repo CI validates build, tests, lint, and any service-specific smoke checks.
+3. Only after those checks succeed, the repo dispatches `platform-infra/.github/workflows/build-push.yaml` with a service input.
+4. Build/push publishes updated image tags in GHCR.
+5. `deploy.yaml` runs and applies changes to `axiomnode-stg`.
+
+Covered automatic chain services:
+
+- `api-gateway`
+- `bff-mobile`
+- `bff-backoffice`
+- `backoffice`
+- `microservice-quizz`
+- `microservice-wordpass`
+- `microservice-users`
+
+Not covered by this automatic GHCR-to-k3s chain:
+
+- `mobile-app`
+- `ai-engine`
 
 ## Local Dev Stack
 

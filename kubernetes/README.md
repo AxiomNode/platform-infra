@@ -97,6 +97,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ## Runtime routing persistence
 
 - `bff-backoffice` mounts a small PVC named `bff-backoffice-routing-state` and stores runtime routing overrides at `/var/lib/axiomnode/bff-backoffice/routing-state.json`.
+- `bff-backoffice` also stores shared ai-engine destination presets in the same persisted runtime state file.
 - `api-gateway` mounts a small PVC named `api-gateway-routing-state` and stores the live ai-engine target at `/var/lib/axiomnode/api-gateway/routing-state.json`.
 - This keeps backoffice service-target overrides and the gateway ai-engine target alive across pod recreations, not just process restarts.
 - Environment overlays set `ALLOWED_ROUTING_TARGET_HOSTS` so both BFF and gateway only accept approved internal services, private subnets, and approved environment domains.
@@ -105,6 +106,42 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 
 - **Build & Push** (`.github/workflows/build-push.yaml`): Detects changed services, builds Docker images, pushes to GHCR.
 - **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `stg`. Automatic deploys render manifests with immutable image tags from the triggering build run; manual deploys keep the environment tags and perform forced restarts when needed.
+
+### Covered automatic rollout chain
+
+The current automatic GHCR-to-k3s staging chain covers:
+
+- `api-gateway`
+- `bff-mobile`
+- `bff-backoffice`
+- `backoffice`
+- `microservice-quizz`
+- `microservice-wordpass`
+- `microservice-users`
+
+For these services, the intended behavior is:
+
+1. service repo push to `main`
+2. service repo validation succeeds
+3. service repo dispatches `platform-infra` build workflow
+4. image is published to GHCR
+5. staging rollout runs automatically against `axiomnode-stg`
+
+`mobile-app` is outside this chain. `ai-engine` is also outside this chain for the current staging topology because the engine is optional in-cluster and may run on an external workstation.
+
+### Immutable deployment behavior
+
+Automatic staging deploys do not rely on mutable `stg` tags as the authoritative artifact reference. The deploy workflow rewrites the rendered overlay to use the immutable short-SHA images produced by the triggering build run.
+
+This provides:
+
+- clearer rollback targeting
+- stronger traceability
+- less ambiguity during incident review
+
+### Manual deployment behavior
+
+Manual deploys continue to support environment tags and explicit rollout restart behavior. This is useful for controlled operations and production promotion where the operator wants environment semantics rather than workflow-run immutability.
 
 ### Required GitHub Secrets
 
