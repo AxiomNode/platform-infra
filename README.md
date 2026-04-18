@@ -21,6 +21,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - `stg`
 	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
 	- Public domains route through ingress.
+	- `ai-engine` is no longer part of the default staging overlay; the cluster expects an optional external workstation target managed at runtime from backoffice.
 	- CI/CD auto-deploy target after successful image builds on `main`.
 
 - `prod`
@@ -79,6 +80,21 @@ Useful commands:
 ./scripts/dev-local-stack.sh status
 ./scripts/dev-local-stack.sh logs api-gateway
 ./scripts/dev-local-stack.sh down
+```
+
+## Staging Canary
+
+Run an in-cluster ai-engine canary against staging without port-forwarding, but only when you deliberately deploy the optional in-cluster ai-engine manifests:
+
+```bash
+./scripts/ai-engine-stg-canary.sh
+```
+
+Useful overrides:
+
+```bash
+GAME_TYPE=word-pass QUERY="sistema solar" ./scripts/ai-engine-stg-canary.sh
+QUERY="teorema de pitagoras" CATEGORY_ID=19 NUM_QUESTIONS=3 ./scripts/ai-engine-stg-canary.sh
 ```
 
 ## Required secrets in this repository

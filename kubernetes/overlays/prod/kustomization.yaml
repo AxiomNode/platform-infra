@@ -12,19 +12,10 @@ resources:
 
 patches:
   - path: patches/replicas.yaml
-  - path: patches/llama-resources.yaml
   # Remove in-cluster databases for prod (use managed DB)
   - path: patches/remove-db-statefulsets.yaml
 
 configMapGenerator:
-  - name: ai-engine-api-config
-    literals:
-      - DISTRIBUTION=prod
-      - LOG_LEVEL=warning
-      - WORKERS=4
-  - name: ai-engine-stats-config
-    literals:
-      - DISTRIBUTION=prod
   - name: microservice-quizz-config
     literals:
       - DISTRIBUTION=prod
@@ -41,20 +32,18 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=prod
       - LOG_LEVEL=warning
+      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
   - name: bff-mobile-config
     literals:
       - DISTRIBUTION=prod
       - LOG_LEVEL=warning
   - name: bff-backoffice-config
     literals:
+      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,ai-engine-api,ai-engine-stats,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       - DISTRIBUTION=prod
       - LOG_LEVEL=warning
 
 images:
-  - name: ghcr.io/axiomnode/ai-engine-api
-    newTag: prod
-  - name: ghcr.io/axiomnode/ai-engine-stats
-    newTag: prod
   - name: ghcr.io/axiomnode/microservice-quizz-api
     newTag: prod
   - name: ghcr.io/axiomnode/microservice-wordpass-api

@@ -35,16 +35,30 @@ spec:
             - containerPort: 8001
               protocol: TCP
           env:
+            - name: UVICORN_WORKERS
+              value: "1"
             - name: PORT
               value: "8001"
-            - name: UVICORN_WORKERS
-              value: "2"
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: AI_ENGINE_LLAMA_URL
               value: "http://ai-engine-llama:8080/v1/completions"
             - name: AI_ENGINE_GENERATION_CACHE_REDIS_URL
               value: "redis://ai-engine-cache:6379/0"
+            - name: AI_ENGINE_EMBEDDING_MODEL
+              value: "paraphrase-multilingual-MiniLM-L12-v2"
+            - name: AI_ENGINE_GENERATION_CACHE_NAMESPACE
+              value: "v2-rag-20260416-1"
+            - name: AI_ENGINE_LLAMA_TIMEOUT_SECONDS
+              value: "1800"
+            - name: AI_ENGINE_LLAMA_MAX_CONCURRENT_REQUESTS
+              value: "1"
+            - name: AI_ENGINE_CACHE_WARMUP_ENABLED
+              value: "false"
+            - name: AI_ENGINE_GENERATION_MAX_IN_FLIGHT
+              value: "2"
+            - name: AI_ENGINE_GENERATION_MAX_QUEUE_SIZE
+              value: "2"
           envFrom:
             - secretRef:
                 name: ai-engine-api-secret

@@ -84,10 +84,6 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 
 | Service | Image | Port | Resources (base) |
 |---|---|---|---|
-| ai-engine-api | `ghcr.io/axiomnode/ai-engine-api` | 8001 | 500m-1500m / 2-4Gi |
-| ai-engine-stats | `ghcr.io/axiomnode/ai-engine-stats` | 8000 | 250m-500m / 256-512Mi |
-| ai-engine-cache | `redis:7-alpine` | 6379 | 100m-250m / 128-256Mi |
-| ai-engine-llama | `ghcr.io/ggml-org/llama.cpp:server` | 8080 | 2-4 CPU / 6-10Gi |
 | microservice-quizz-api | `ghcr.io/axiomnode/microservice-quizz-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-wordpass-api | `ghcr.io/axiomnode/microservice-wordpass-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-users-api | `ghcr.io/axiomnode/microservice-users-api` | 7100 | 250m-1 / 256-512Mi |
@@ -95,6 +91,15 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 | bff-mobile | `ghcr.io/axiomnode/bff-mobile` | 7010 | 100m-500m / 128-256Mi |
 | bff-backoffice | `ghcr.io/axiomnode/bff-backoffice` | 7011 | 100m-500m / 128-256Mi |
 | backoffice | `ghcr.io/axiomnode/backoffice` | 80 | 50m-200m / 64-128Mi |
+
+`ai-engine` remains available in `kubernetes/base/ai-engine`, but it is no longer part of the default base or environment overlays. The platform now assumes ai-engine is optional and may run on an external workstation.
+
+## Runtime routing persistence
+
+- `bff-backoffice` mounts a small PVC named `bff-backoffice-routing-state` and stores runtime routing overrides at `/var/lib/axiomnode/bff-backoffice/routing-state.json`.
+- `api-gateway` mounts a small PVC named `api-gateway-routing-state` and stores the live ai-engine target at `/var/lib/axiomnode/api-gateway/routing-state.json`.
+- This keeps backoffice service-target overrides and the gateway ai-engine target alive across pod recreations, not just process restarts.
+- Environment overlays set `ALLOWED_ROUTING_TARGET_HOSTS` so both BFF and gateway only accept approved internal services, private subnets, and approved environment domains.
 
 ## CI/CD
 
@@ -116,7 +121,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 
 ## Prod Features
 
-- **HPA**: Auto-scaling for api-gateway, bff-mobile, ai-engine-api (2-6 replicas)
+- **HPA**: Auto-scaling for api-gateway and bff-mobile (2-6 replicas)
 - **PDB**: Pod Disruption Budgets ensure availability during updates
 - **TLS**: cert-manager + Let's Encrypt for HTTPS
 - **Managed DB**: StatefulSets removed; DATABASE_URL secrets point to external endpoints

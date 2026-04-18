@@ -37,6 +37,8 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
+            - name: BACKOFFICE_ROUTING_STATE_FILE
+              value: "/var/lib/axiomnode/bff-backoffice/routing-state.json"
             - name: PORT
               value: "7011"
             - name: QUIZZ_SERVICE_URL
@@ -45,10 +47,10 @@ spec:
               value: "http://microservice-wordpass-api:7100"
             - name: USERS_SERVICE_URL
               value: "http://microservice-users-api:7100"
-            - name: AI_ENGINE_URL
-              value: "http://ai-engine-api:8001"
             - name: AI_ENGINE_STATS_URL
-              value: "http://ai-engine-stats:8000"
+              value: "http://localhost:7000"
+            - name: AI_ENGINE_API_URL
+              value: "http://localhost:7001"
           envFrom:
             - configMapRef:
                 name: bff-backoffice-config
@@ -79,3 +81,10 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          volumeMounts:
+            - name: routing-state
+              mountPath: /var/lib/axiomnode/bff-backoffice
+      volumes:
+        - name: routing-state
+          persistentVolumeClaim:
+            claimName: bff-backoffice-routing-state

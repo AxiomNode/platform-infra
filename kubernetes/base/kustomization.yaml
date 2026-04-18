@@ -5,7 +5,6 @@ namespace: axiomnode
 
 resources:
   - namespace.yaml
-  - ai-engine
   - microservice-quizz
   - microservice-wordpass
   - microservice-users

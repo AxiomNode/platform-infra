@@ -17,23 +17,3 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: bff-mobile
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: ai-engine-api-pdb
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: ai-engine-api
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: ai-engine-llama-pdb
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: ai-engine-llama

@@ -9,19 +9,9 @@ resources:
   - sealed-secrets
 
 patches:
-  - path: patches/ai-engine-resources.yaml
   - path: patches/microservices-resources.yaml
-  - path: patches/llama-resources.yaml
 
 configMapGenerator:
-  - name: ai-engine-api-config
-    literals:
-      - DISTRIBUTION=dev
-      - LOG_LEVEL=debug
-      - WORKERS=1
-  - name: ai-engine-stats-config
-    literals:
-      - DISTRIBUTION=dev
   - name: microservice-quizz-config
     literals:
       - PRIVATE_DOCS_ENABLED=false
@@ -45,6 +35,7 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
+      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,host.docker.internal,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
   - name: bff-mobile-config
     literals:
       - SERVICE_NAME=bff-mobile
@@ -57,14 +48,11 @@ configMapGenerator:
       - SERVICE_NAME=bff-backoffice
       - SERVICE_PORT=7011
       - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,host.docker.internal,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,ai-engine-api,ai-engine-stats,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
 
 images:
-  - name: ghcr.io/axiomnode/ai-engine-api
-    newTag: dev
-  - name: ghcr.io/axiomnode/ai-engine-stats
-    newTag: dev
   - name: ghcr.io/axiomnode/microservice-quizz-api
     newTag: dev
   - name: ghcr.io/axiomnode/microservice-wordpass-api

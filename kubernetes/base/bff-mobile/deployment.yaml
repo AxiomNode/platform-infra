@@ -45,8 +45,6 @@ spec:
               value: "http://microservice-wordpass-api:7100"
             - name: USERS_SERVICE_URL
               value: "http://microservice-users-api:7100"
-            - name: AI_ENGINE_URL
-              value: "http://ai-engine-api:8001"
           envFrom:
             - configMapRef:
                 name: bff-mobile-config

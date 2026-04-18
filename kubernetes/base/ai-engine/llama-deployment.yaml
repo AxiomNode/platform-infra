@@ -51,7 +51,7 @@ spec:
             - "--mlock"
           env:
             - name: LLAMA_MODEL_FILE
-              value: "Qwen2.5-3B-Instruct-Q6_K.gguf"
+              value: "Qwen2.5-7B-Instruct-Q4_K_M.gguf"
             - name: LLAMA_THREADS
               value: "4"
             - name: LLAMA_BATCH
@@ -59,7 +59,7 @@ spec:
             - name: LLAMA_CTX_SIZE
               value: "2048"
             - name: LLAMA_PARALLEL
-              value: "2"
+              value: "1"
           envFrom:
             - configMapRef:
                 name: ai-engine-llama-config

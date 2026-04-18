@@ -13,7 +13,7 @@ spec:
             - -ec
             - |
               set -e
-              MODEL_FILE="${LLAMA_MODEL_FILE:-Qwen2.5-3B-Instruct-Q4_K_M.gguf}"
+              MODEL_FILE="${LLAMA_MODEL_FILE:-Qwen2.5-7B-Instruct-Q4_K_M.gguf}"
               MODEL_URL="${LLAMA_MODEL_URL:-}"
 
               if [ -z "$MODEL_URL" ]; then
@@ -32,9 +32,9 @@ spec:
               ls -lah /models
           env:
             - name: LLAMA_MODEL_FILE
-              value: Qwen2.5-3B-Instruct-Q4_K_M.gguf
+              value: Qwen2.5-7B-Instruct-Q4_K_M.gguf
             - name: LLAMA_MODEL_URL
-              value: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+              value: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf
           envFrom:
             - configMapRef:
                 name: ai-engine-llama-config
@@ -46,4 +46,4 @@ spec:
         - name: llama-server
           env:
             - name: LLAMA_MODEL_FILE
-              value: Qwen2.5-3B-Instruct-Q4_K_M.gguf
+              value: Qwen2.5-7B-Instruct-Q4_K_M.gguf
