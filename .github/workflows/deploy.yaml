@@ -21,8 +21,6 @@ on:
         type: choice
         options:
           - all
-          - ai-engine-api
-          - ai-engine-stats
           - microservice-quizz
           - microservice-wordpass
           - microservice-users
@@ -68,8 +66,6 @@ jobs:
 
           map_service_to_deployment() {
             case "$1" in
-              ai-engine-api) echo "ai-engine-api" ;;
-              ai-engine-stats) echo "ai-engine-stats" ;;
               microservice-quizz) echo "microservice-quizz-api" ;;
               microservice-wordpass) echo "microservice-wordpass-api" ;;
               microservice-users) echo "microservice-users-api" ;;
@@ -83,8 +79,6 @@ jobs:
 
           map_service_to_image() {
             case "$1" in
-              ai-engine-api) echo "ghcr.io/axiomnode/ai-engine-api" ;;
-              ai-engine-stats) echo "ghcr.io/axiomnode/ai-engine-stats" ;;
               microservice-quizz) echo "ghcr.io/axiomnode/microservice-quizz-api" ;;
               microservice-wordpass) echo "ghcr.io/axiomnode/microservice-wordpass-api" ;;
               microservice-users) echo "ghcr.io/axiomnode/microservice-users-api" ;;
@@ -96,7 +90,7 @@ jobs:
             esac
           }
 
-          ALL_DEPLOYMENTS="ai-engine-api ai-engine-cache ai-engine-llama ai-engine-stats api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api"
+          ALL_DEPLOYMENTS="api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api"
           image_overrides=""
           restart_after_apply="true"
 
@@ -128,20 +122,29 @@ jobs:
             deployments=""
             while IFS= read -r service; do
               [[ -n "${service}" ]] || continue
-              deploy_name=$(map_service_to_deployment "${service}")
+              deploy_name=$(map_service_to_deployment "${service}" || true)
+              [[ -n "${deploy_name}" ]] || continue
               if [[ " ${deployments} " != *" ${deploy_name} "* ]]; then
                 deployments="${deployments} ${deploy_name}"
               fi
             done <<< "${services}"
 
             deployments=$(echo "${deployments}" | xargs)
+            if [[ -z "${deployments}" ]]; then
+              echo "deployments=" >> "$GITHUB_OUTPUT"
+              echo "mode=skip" >> "$GITHUB_OUTPUT"
+              echo "No deployable services were found in the triggering build-push run. Skipping deployment refresh."
+              exit 0
+            fi
+
             image_tag="${{ github.event.workflow_run.head_sha }}"
             image_tag="${image_tag::8}"
             restart_after_apply="false"
 
             while IFS= read -r service; do
               [[ -n "${service}" ]] || continue
-              image_name=$(map_service_to_image "${service}")
+              image_name=$(map_service_to_image "${service}" || true)
+              [[ -n "${image_name}" ]] || continue
               image_overrides+="${image_name}=${image_name}:${image_tag}"
               image_overrides+=$'\n'
             done <<< "${services}"
