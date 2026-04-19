@@ -45,10 +45,6 @@ spec:
               value: "http://bff-mobile:7010"
             - name: BFF_BACKOFFICE_URL
               value: "http://bff-backoffice:7011"
-            - name: AI_ENGINE_API_URL
-              value: "http://localhost:7001"
-            - name: AI_ENGINE_STATS_URL
-              value: "http://localhost:7000"
           envFrom:
             - configMapRef:
                 name: api-gateway-config

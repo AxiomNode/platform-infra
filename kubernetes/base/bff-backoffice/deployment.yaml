@@ -47,10 +47,6 @@ spec:
               value: "http://microservice-wordpass-api:7100"
             - name: USERS_SERVICE_URL
               value: "http://microservice-users-api:7100"
-            - name: AI_ENGINE_STATS_URL
-              value: "http://localhost:7000"
-            - name: AI_ENGINE_API_URL
-              value: "http://localhost:7001"
           envFrom:
             - configMapRef:
                 name: bff-backoffice-config
