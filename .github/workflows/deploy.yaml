@@ -252,8 +252,10 @@ jobs:
           mkdir -p ~/.ssh
           echo "$K3S_SSH_KEY" > ~/.ssh/k3s_key
           chmod 600 ~/.ssh/k3s_key
-          ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          SSH_OPTS="-i ~/.ssh/k3s_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
+          if ! ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+            echo "ssh-keyscan could not prefetch the host key for ${K3S_HOST}; continuing with StrictHostKeyChecking=accept-new"
+          fi
+          SSH_OPTS="-i ~/.ssh/k3s_key -o StrictHostKeyChecking=accept-new -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
 
           normalize_int() {
             local value="${1:-0}"
