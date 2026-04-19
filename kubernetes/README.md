@@ -87,19 +87,20 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 | microservice-quizz-api | `ghcr.io/axiomnode/microservice-quizz-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-wordpass-api | `ghcr.io/axiomnode/microservice-wordpass-api` | 7100 | 250m-1 / 256-512Mi |
 | microservice-users-api | `ghcr.io/axiomnode/microservice-users-api` | 7100 | 250m-1 / 256-512Mi |
-| api-gateway | `ghcr.io/axiomnode/api-gateway` | 7005 | 100m-500m / 128-256Mi |
+| api-gateway | `ghcr.io/axiomnode/api-gateway` | 7005 | 200m-1 / 256-512Mi |
 | bff-mobile | `ghcr.io/axiomnode/bff-mobile` | 7010 | 100m-500m / 128-256Mi |
-| bff-backoffice | `ghcr.io/axiomnode/bff-backoffice` | 7011 | 100m-500m / 128-256Mi |
+| bff-backoffice | `ghcr.io/axiomnode/bff-backoffice` | 7011 | 200m-1 / 256-512Mi |
 | backoffice | `ghcr.io/axiomnode/backoffice` | 80 | 50m-200m / 64-128Mi |
 
-`ai-engine` remains available in `kubernetes/base/ai-engine`, but it is no longer part of the default base or environment overlays. The platform now assumes ai-engine is optional and may run on an external workstation.
+`ai-engine` remains available in `kubernetes/base/ai-engine`, and the split-runtime resources (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) are also available through `kubernetes/base/ai-engine-runtime`. The default `stg` overlay now deploys the runtime services in-cluster while expecting only the llama.cpp server to live on an external workstation. When you need the old fully in-cluster staging topology for smoke tests or benchmarking, render `kubernetes/overlays/stg-with-ai-engine` explicitly.
 
 ## Runtime routing persistence
 
 - `bff-backoffice` mounts a small PVC named `bff-backoffice-routing-state` and stores runtime routing overrides at `/var/lib/axiomnode/bff-backoffice/routing-state.json`.
 - `bff-backoffice` also stores shared ai-engine destination presets in the same persisted runtime state file.
-- `api-gateway` mounts a small PVC named `api-gateway-routing-state` and stores the live ai-engine target at `/var/lib/axiomnode/api-gateway/routing-state.json`.
-- This keeps backoffice service-target overrides and the gateway ai-engine target alive across pod recreations, not just process restarts.
+- `api-gateway` mounts a small PVC named `api-gateway-routing-state` and stores legacy live ai-engine target overrides at `/var/lib/axiomnode/api-gateway/routing-state.json`.
+- `ai-engine-api` mounts a small PVC named `ai-engine-api-runtime-state` and stores the active llama target override at `/var/lib/axiomnode/ai-engine-api/llama-target-state.json`.
+- This keeps backoffice service-target overrides and the active llama target alive across pod recreations, not just process restarts.
 - Environment overlays set `ALLOWED_ROUTING_TARGET_HOSTS` so both BFF and gateway only accept approved internal services, private subnets, and approved environment domains.
 
 ## CI/CD
@@ -115,6 +116,8 @@ The current automatic GHCR-to-k3s staging chain covers:
 - `bff-mobile`
 - `bff-backoffice`
 - `backoffice`
+- `ai-engine-api`
+- `ai-engine-stats`
 - `microservice-quizz`
 - `microservice-wordpass`
 - `microservice-users`
@@ -127,7 +130,7 @@ For these services, the intended behavior is:
 4. image is published to GHCR
 5. staging rollout runs automatically against `axiomnode-stg`
 
-`mobile-app` is outside this chain. `ai-engine` is also outside this chain for the current staging topology because the engine is optional in-cluster and may run on an external workstation.
+`mobile-app` is outside this chain. The external llama.cpp server is also outside this chain because it still runs on a workstation in the split staging topology.
 
 ### Immutable deployment behavior
 
@@ -162,3 +165,8 @@ Manual deploys continue to support environment tags and explicit rollout restart
 - **PDB**: Pod Disruption Budgets ensure availability during updates
 - **TLS**: cert-manager + Let's Encrypt for HTTPS
 - **Managed DB**: StatefulSets removed; DATABASE_URL secrets point to external endpoints
+
+## Current Capacity Notes
+
+- `stg` now runs `api-gateway`, `bff-mobile`, `bff-backoffice`, and `backoffice` with at least 2 replicas where interactive backoffice traffic benefits from it.
+- `api-gateway` and `bff-backoffice` base resource envelopes were increased after moving `ai-engine` off-cluster, so the VPS can absorb heavier backoffice monitoring and admin traffic without running on the previous tighter CPU/memory ceilings.

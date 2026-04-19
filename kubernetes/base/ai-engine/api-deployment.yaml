@@ -43,6 +43,8 @@ spec:
               value: "1"
             - name: AI_ENGINE_LLAMA_URL
               value: "http://ai-engine-llama:8080/v1/completions"
+            - name: AI_ENGINE_LLAMA_TARGET_STATE_FILE
+              value: "/var/lib/axiomnode/ai-engine-api/llama-target-state.json"
             - name: AI_ENGINE_GENERATION_CACHE_REDIS_URL
               value: "redis://ai-engine-cache:6379/0"
             - name: AI_ENGINE_EMBEDDING_MODEL
@@ -95,9 +97,14 @@ spec:
               readOnly: true
             - name: data
               mountPath: /app/data
+            - name: runtime-state
+              mountPath: /var/lib/axiomnode/ai-engine-api
       volumes:
         - name: models
           persistentVolumeClaim:
             claimName: ai-engine-llama-models
         - name: data
           emptyDir: {}
+        - name: runtime-state
+          persistentVolumeClaim:
+            claimName: ai-engine-api-runtime-state

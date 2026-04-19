@@ -39,6 +39,24 @@ BUSY_SLEEP_SECONDS=${BUSY_SLEEP_SECONDS@Q}
 CAPTURE_DIAGNOSTICS=${CAPTURE_DIAGNOSTICS@Q}
 DIAGNOSTICS_SINCE=${DIAGNOSTICS_SINCE@Q}
 
+if ! k3s kubectl -n "\$NS" get svc ai-engine-api >/dev/null 2>&1; then
+  echo "ai-engine-api service not found in namespace '\$NS'." >&2
+  echo "Default staging does not include in-cluster ai-engine; point runtime routing to an external workstation target or deploy the optional ai-engine manifests first." >&2
+  exit 2
+fi
+
+if ! k3s kubectl -n "\$NS" get deployment ai-engine-api >/dev/null 2>&1; then
+  echo "ai-engine-api deployment not found in namespace '\$NS'." >&2
+  echo "The canary only works when optional in-cluster ai-engine resources are deliberately deployed." >&2
+  exit 2
+fi
+
+if ! k3s kubectl -n "\$NS" get secret ai-engine-api-secret >/dev/null 2>&1; then
+  echo "ai-engine-api-secret not found in namespace '\$NS'." >&2
+  echo "Cannot run ai-engine canary without the in-cluster API secret." >&2
+  exit 2
+fi
+
 API_KEY=
 CORRELATION_ID="canary-$(date +%Y%m%d%H%M%S)-$$"
 
@@ -91,11 +109,20 @@ spec:
 
           def fetch_stats():
             request = Request(
-              "http://ai-engine-api:8001/monitor/stats",
+              "http://ai-engine-stats:8000/stats",
               headers={"X-API-Key": api_key},
             )
-            with urlopen(request, timeout=30) as response:
-              payload = json.loads(response.read().decode("utf-8", "replace"))
+            try:
+              with urlopen(request, timeout=30) as response:
+                payload = json.loads(response.read().decode("utf-8", "replace"))
+            except HTTPError as exc:
+              return {
+                "error": f"http:{exc.code}",
+              }
+            except (URLError, TimeoutError) as exc:
+              return {
+                "error": str(exc),
+              }
             return {
               "generation_capacity": payload.get("generation_capacity"),
               "counters": payload.get("counters"),
@@ -143,20 +170,24 @@ spec:
 YAML
 
 k3s kubectl apply -f "/tmp/\${POD}.yaml" >/dev/null
-k3s kubectl -n "\$NS" wait --for=condition=Ready pod/"\$POD" --timeout=120s >/dev/null || true
 k3s kubectl -n "\$NS" wait --for=jsonpath='{.status.phase}'=Succeeded pod/"\$POD" --timeout="\${TIMEOUT_SECONDS}s" >/dev/null || true
-k3s kubectl -n "\$NS" logs "\$POD"
-RESULT=\$?
+k3s kubectl -n "\$NS" logs "\$POD" || true
+RESULT=$(k3s kubectl -n "\$NS" get pod "\$POD" -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}' 2>/dev/null || echo 1)
+if ! [[ "\$RESULT" =~ ^[0-9]+$ ]]; then
+  RESULT=1
+fi
 
 if [[ "\$CAPTURE_DIAGNOSTICS" == "true" ]]; then
+  set +e
   echo "--- DIAGNOSTICS: API CORRELATION ---"
-  k3s kubectl -n "\$NS" logs deploy/ai-engine-api --since="\$DIAGNOSTICS_SINCE" 2>/dev/null | grep "\$CORRELATION_ID" || true
+  k3s kubectl -n "\$NS" logs deploy/ai-engine-api --since="\$DIAGNOSTICS_SINCE" 2>/dev/null | grep "\$CORRELATION_ID"
   echo "--- DIAGNOSTICS: API UPSTREAM ERRORS ---"
-  k3s kubectl -n "\$NS" logs deploy/ai-engine-api --since="\$DIAGNOSTICS_SINCE" 2>/dev/null | grep -E "upstream request error|upstream timeout|request failed" | tail -n 40 || true
+  k3s kubectl -n "\$NS" logs deploy/ai-engine-api --since="\$DIAGNOSTICS_SINCE" 2>/dev/null | grep -E "upstream request error|upstream timeout|request failed" | tail -n 40
   echo "--- DIAGNOSTICS: LLAMA PODS ---"
-  k3s kubectl -n "\$NS" get pods -l app.kubernetes.io/name=ai-engine-llama -o wide || true
+  k3s kubectl -n "\$NS" get pods -l app.kubernetes.io/name=ai-engine-llama -o wide
   echo "--- DIAGNOSTICS: LLAMA DESCRIBE ---"
-  k3s kubectl -n "\$NS" describe pod -l app.kubernetes.io/name=ai-engine-llama | tail -n 80 || true
+  k3s kubectl -n "\$NS" describe pod -l app.kubernetes.io/name=ai-engine-llama | tail -n 80
+  set -e
 fi
 
 k3s kubectl -n "\$NS" delete pod "\$POD" --ignore-not-found >/dev/null 2>&1 || true

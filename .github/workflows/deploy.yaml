@@ -21,6 +21,8 @@ on:
         type: choice
         options:
           - all
+          - ai-engine-api
+          - ai-engine-stats
           - microservice-quizz
           - microservice-wordpass
           - microservice-users
@@ -28,6 +30,11 @@ on:
           - bff-mobile
           - bff-backoffice
           - backoffice
+      include_ai_engine:
+        description: "Render the optional staging overlay with in-cluster ai-engine"
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -66,6 +73,7 @@ jobs:
 
           map_service_to_deployment() {
             case "$1" in
+              ai-engine-api|ai-engine-stats) echo "ai-engine-api ai-engine-stats ai-engine-cache" ;;
               microservice-quizz) echo "microservice-quizz-api" ;;
               microservice-wordpass) echo "microservice-wordpass-api" ;;
               microservice-users) echo "microservice-users-api" ;;
@@ -79,6 +87,8 @@ jobs:
 
           map_service_to_image() {
             case "$1" in
+              ai-engine-api) echo "ghcr.io/axiomnode/ai-engine-api" ;;
+              ai-engine-stats) echo "ghcr.io/axiomnode/ai-engine-stats" ;;
               microservice-quizz) echo "ghcr.io/axiomnode/microservice-quizz-api" ;;
               microservice-wordpass) echo "ghcr.io/axiomnode/microservice-wordpass-api" ;;
               microservice-users) echo "ghcr.io/axiomnode/microservice-users-api" ;;
@@ -90,14 +100,23 @@ jobs:
             esac
           }
 
-          ALL_DEPLOYMENTS="api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api"
+          ALL_DEPLOYMENTS="api-gateway backoffice bff-backoffice bff-mobile microservice-quizz-api microservice-users-api microservice-wordpass-api ai-engine-api ai-engine-stats ai-engine-cache"
+          AI_ENGINE_DEPLOYMENTS="ai-engine-api ai-engine-stats ai-engine-cache ai-engine-llama"
           image_overrides=""
           restart_after_apply="true"
+          overlay="${{ steps.env.outputs.env }}"
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ steps.env.outputs.env }}" == "stg" && "${{ inputs.include_ai_engine }}" == "true" ]]; then
+            overlay="stg-with-ai-engine"
+          fi
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             service_input="${{ inputs.service }}"
             if [[ "${service_input}" == "all" ]]; then
               deployments="${ALL_DEPLOYMENTS}"
+              if [[ "${overlay}" == "stg-with-ai-engine" ]]; then
+                deployments="${deployments} ${AI_ENGINE_DEPLOYMENTS}"
+              fi
             else
               deployments="$(map_service_to_deployment "${service_input}")"
             fi
@@ -133,7 +152,9 @@ jobs:
             if [[ -z "${deployments}" ]]; then
               echo "deployments=" >> "$GITHUB_OUTPUT"
               echo "mode=skip" >> "$GITHUB_OUTPUT"
-              echo "No deployable services were found in the triggering build-push run. Skipping deployment refresh."
+              echo "No deployable services were found in the triggering build-push run."
+              echo "This usually means the completed image builds were outside the selected rollout chain."
+              echo "Skipping deployment refresh."
               exit 0
             fi
 
@@ -152,12 +173,14 @@ jobs:
 
           echo "deployments=${deployments}" >> "$GITHUB_OUTPUT"
           echo "restart_after_apply=${restart_after_apply}" >> "$GITHUB_OUTPUT"
+          echo "overlay=${overlay}" >> "$GITHUB_OUTPUT"
           echo "image_overrides<<EOF" >> "$GITHUB_OUTPUT"
           printf '%s' "${image_overrides}" >> "$GITHUB_OUTPUT"
           echo >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
           echo "mode=apply" >> "$GITHUB_OUTPUT"
           echo "Target deployments: ${deployments}"
+          echo "Overlay: ${overlay}"
           if [[ -n "${image_overrides}" ]]; then
             echo "Using immutable image overrides from triggering build run:"
             printf '%s' "${image_overrides}"
@@ -170,9 +193,9 @@ jobs:
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/
 
-          ENV="${{ steps.env.outputs.env }}"
-          echo "Validating overlay: ${ENV}"
-          kustomize build "kubernetes/overlays/${ENV}" > /dev/null
+          OVERLAY="${{ steps.targets.outputs.overlay }}"
+          echo "Validating overlay: ${OVERLAY}"
+          kustomize build "kubernetes/overlays/${OVERLAY}" > /dev/null
           echo "Manifests valid."
 
       - name: Render deployment manifests
@@ -184,11 +207,12 @@ jobs:
           set -euo pipefail
 
           ENV="${{ steps.env.outputs.env }}"
+          OVERLAY="${{ steps.targets.outputs.overlay }}"
           RENDER_DIR="$(mktemp -d)"
           cp -R kubernetes "${RENDER_DIR}/"
 
           if [[ -n "${IMAGE_OVERRIDES}" ]]; then
-            pushd "${RENDER_DIR}/kubernetes/overlays/${ENV}" > /dev/null
+            pushd "${RENDER_DIR}/kubernetes/overlays/${OVERLAY}" > /dev/null
             while IFS= read -r override; do
               [[ -n "${override}" ]] || continue
               kustomize edit set image "${override}"
@@ -197,7 +221,7 @@ jobs:
           fi
 
           rendered_manifest="${RENDER_DIR}/rendered-${ENV}.yaml"
-          kustomize build "${RENDER_DIR}/kubernetes/overlays/${ENV}" > "${rendered_manifest}"
+          kustomize build "${RENDER_DIR}/kubernetes/overlays/${OVERLAY}" > "${rendered_manifest}"
 
           echo "manifest=${rendered_manifest}" >> "$GITHUB_OUTPUT"
           echo "Rendered manifests ready at ${rendered_manifest}"
@@ -321,7 +345,9 @@ jobs:
       - name: Skip no-op workflow_run deploy
         if: steps.targets.outputs.mode == 'skip'
         run: |
-          echo "No successful service image builds were detected in the triggering workflow run."
+          echo "No successful in-scope service image builds were detected in the triggering workflow run."
+          echo "Note: ai-engine images are built in platform-infra but are intentionally outside the default staging rollout chain."
+          echo "Use manual dispatch with include_ai_engine=true to render the optional in-cluster staging overlay."
           echo "Skipping staging deployment refresh."
 
       - name: Smoke test

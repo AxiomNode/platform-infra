@@ -40,4 +40,5 @@ jobs:
           set -euo pipefail
           kubectl kustomize kubernetes/overlays/dev > /tmp/dev-rendered.yaml
           kubectl kustomize kubernetes/overlays/stg > /tmp/stg-rendered.yaml
+          kubectl kustomize kubernetes/overlays/stg-with-ai-engine > /tmp/stg-with-ai-engine-rendered.yaml
           kubectl kustomize kubernetes/overlays/prod > /tmp/prod-rendered.yaml

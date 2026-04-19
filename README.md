@@ -22,6 +22,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
 	- Public domains route through ingress.
 	- `ai-engine` is no longer part of the default staging overlay; the cluster expects an optional external workstation target managed at runtime from backoffice.
+	- When you need in-cluster verification again, use the optional `kubernetes/overlays/stg-with-ai-engine` variant through manual deploy.
 	- CI/CD auto-deploy target after successful image builds on `main`.
 
 - `prod`
@@ -58,6 +59,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 	- Notes:
 		- Workflow-driven staging deploys pin changed services to the immutable short-SHA tags produced by the triggering build run.
 		- Manual deploys keep the environment tags (`stg`/`prod`) and still force restarts when a mutable tag must be refreshed.
+		- Manual staging deploys can opt into the `stg-with-ai-engine` overlay with `include_ai_engine=true`.
 	- Safety: rollout status + available replica checks fail the workflow if services are not healthy.
 
 ## Current automation chain
@@ -82,6 +84,8 @@ Not covered by this automatic GHCR-to-k3s chain:
 
 - `mobile-app`
 - `ai-engine`
+
+`ai-engine` can still be deployed to staging deliberately through the optional `stg-with-ai-engine` overlay when you need in-cluster smoke tests or diagnostics measurements.
 
 ## Local Dev Stack
 

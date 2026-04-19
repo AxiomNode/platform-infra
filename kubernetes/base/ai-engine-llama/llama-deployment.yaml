@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-llama
+  labels:
+    app.kubernetes.io/name: ai-engine-llama
+    app.kubernetes.io/component: llm
+    app.kubernetes.io/part-of: axiomnode
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ai-engine-llama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ai-engine-llama
+        app.kubernetes.io/component: llm
+        app.kubernetes.io/part-of: axiomnode
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: llama-server
+          image: ghcr.io/ggml-org/llama.cpp:server
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          args:
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "8080"
+            - "--model"
+            - "/models/$(LLAMA_MODEL_FILE)"
+            - "--threads"
+            - "$(LLAMA_THREADS)"
+            - "--batch-size"
+            - "$(LLAMA_BATCH)"
+            - "--ctx-size"
+            - "$(LLAMA_CTX_SIZE)"
+            - "--parallel"
+            - "$(LLAMA_PARALLEL)"
+            - "--cont-batching"
+            - "--mlock"
+          env:
+            - name: LLAMA_MODEL_FILE
+              value: "Qwen2.5-7B-Instruct-Q4_K_M.gguf"
+            - name: LLAMA_THREADS
+              value: "4"
+            - name: LLAMA_BATCH
+              value: "512"
+            - name: LLAMA_CTX_SIZE
+              value: "2048"
+            - name: LLAMA_PARALLEL
+              value: "1"
+          envFrom:
+            - configMapRef:
+                name: ai-engine-llama-config
+                optional: true
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "2000m"
+              memory: "6Gi"
+            limits:
+              cpu: "4000m"
+              memory: "10Gi"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 8
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 5
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ai-engine-llama-models

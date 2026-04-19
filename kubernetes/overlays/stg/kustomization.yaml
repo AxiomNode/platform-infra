@@ -5,6 +5,7 @@ namespace: axiomnode-stg
 
 resources:
   - ../../base
+  - ../../base/ai-engine-runtime
   - ingress.yaml
   - sealed-secrets
 
@@ -35,8 +36,10 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
+      - AI_ENGINE_API_URL=http://ai-engine-api:8001
+      - AI_ENGINE_STATS_URL=http://ai-engine-stats:8000
       - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
-      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,axiomnode-gateway.amksandbox.cloud,axiomnode-backoffice.amksandbox.cloud,*.amksandbox.cloud,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,ai-engine-api,ai-engine-stats,axiomnode-gateway.amksandbox.cloud,axiomnode-backoffice.amksandbox.cloud,*.amksandbox.cloud,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       - UPSTREAM_TIMEOUT_MS=30000
   - name: bff-mobile-config
     literals:
@@ -52,8 +55,21 @@ configMapGenerator:
       - SERVICE_PORT=7011
       - API_GATEWAY_URL=http://api-gateway:7005
       - BFF_MOBILE_URL=http://bff-mobile:7010
+      - AI_ENGINE_API_URL=http://ai-engine-api:8001
+      - AI_ENGINE_STATS_URL=http://ai-engine-stats:8000
       - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,ai-engine-api,ai-engine-stats,axiomnode-gateway.amksandbox.cloud,axiomnode-backoffice.amksandbox.cloud,*.amksandbox.cloud,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
       - ALLOWED_ORIGINS=https://axiomnode-backoffice.amksandbox.cloud,http://localhost:5173,http://localhost:3000
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+  - name: ai-engine-api-config
+    literals:
+      - DISTRIBUTION=stg
+      - LOG_LEVEL=info
+      - PRIVATE_DOCS_ENABLED=false
+      - AI_ENGINE_DIAGNOSTICS_CACHE_TTL_MS=2000
+      - AI_ENGINE_LLAMA_URL=http://llama-workstation.invalid:7002/v1/completions
+  - name: ai-engine-stats-config
+    literals:
       - DISTRIBUTION=stg
       - LOG_LEVEL=info
   - name: backoffice-config
@@ -82,4 +98,8 @@ images:
   - name: ghcr.io/axiomnode/bff-backoffice
     newTag: stg
   - name: ghcr.io/axiomnode/backoffice
+    newTag: stg
+  - name: ghcr.io/axiomnode/ai-engine-api
+    newTag: stg
+  - name: ghcr.io/axiomnode/ai-engine-stats
     newTag: stg

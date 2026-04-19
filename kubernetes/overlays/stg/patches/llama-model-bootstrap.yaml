@@ -34,7 +34,7 @@ spec:
             - name: LLAMA_MODEL_FILE
               value: Qwen2.5-7B-Instruct-Q4_K_M.gguf
             - name: LLAMA_MODEL_URL
-              value: https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf
+              value: https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf
           envFrom:
             - configMapRef:
                 name: ai-engine-llama-config
