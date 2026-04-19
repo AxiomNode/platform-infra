@@ -255,6 +255,87 @@ jobs:
           ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null
           SSH_OPTS="-i ~/.ssh/k3s_key -o ServerAliveInterval=30 -o ServerAliveCountMax=20"
 
+          normalize_int() {
+            local value="${1:-0}"
+            if [[ "${value}" =~ ^[0-9]+$ ]]; then
+              echo "${value}"
+            else
+              echo "0"
+            fi
+          }
+
+          get_rollout_timeout() {
+            local deploy="$1"
+            local timeout
+            timeout=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.progressDeadlineSeconds}'")
+            timeout=$(normalize_int "${timeout}")
+            if [[ "${timeout}" == "0" ]]; then
+              timeout=600
+            fi
+            echo "${timeout}"
+          }
+
+          collect_deployment_diagnostics() {
+            local deploy="$1"
+            ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+              "set +e; \
+               echo '=== deployment describe ==='; \
+               k3s kubectl describe deployment/${deploy} -n '${NAMESPACE}'; \
+               echo '=== deployment image ==='; \
+               k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.template.spec.containers[*].image}'; \
+               echo; \
+               echo '=== replica sets ==='; \
+               k3s kubectl get rs -n '${NAMESPACE}' --sort-by=.metadata.creationTimestamp; \
+               echo '=== pods wide ==='; \
+               k3s kubectl get pods -n '${NAMESPACE}' -o wide; \
+               echo '=== target pods ==='; \
+               k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o wide; \
+               for pod in \$(k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o name); do \
+                 echo \"=== describe \${pod} ===\"; \
+                 k3s kubectl describe -n '${NAMESPACE}' \"\${pod}\"; \
+                 echo \"=== logs current \${pod} ===\"; \
+                 k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --tail=200; \
+                 echo \"=== logs previous \${pod} ===\"; \
+                 k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --previous --tail=200; \
+               done; \
+               echo '=== recent events ==='; \
+               k3s kubectl get events -n '${NAMESPACE}' --sort-by=.lastTimestamp | tail -n 50"
+          }
+
+          wait_for_available_replicas() {
+            local deploy="$1"
+            local timeout_seconds="$2"
+            local started_at
+            started_at=$(date +%s)
+
+            while true; do
+              local snapshot generation observed desired available now elapsed
+              snapshot=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
+                "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.metadata.generation}|{.status.observedGeneration}|{.spec.replicas}|{.status.availableReplicas}'")
+              IFS='|' read -r generation observed desired available <<< "${snapshot}"
+
+              generation=$(normalize_int "${generation}")
+              observed=$(normalize_int "${observed}")
+              desired=$(normalize_int "${desired}")
+              available=$(normalize_int "${available}")
+
+              echo "Replica check ${deploy}: generation=${generation} observed=${observed} desired=${desired} available=${available}"
+              if [[ "${observed}" -ge "${generation}" && "${available}" -ge "${desired}" ]]; then
+                return 0
+              fi
+
+              now=$(date +%s)
+              elapsed=$((now - started_at))
+              if [[ "${elapsed}" -ge "${timeout_seconds}" ]]; then
+                echo "Deployment ${deploy} did not reach stable availability within ${timeout_seconds}s"
+                return 1
+              fi
+
+              sleep 5
+            done
+          }
+
           # Ensure remote workspace exists in user-owned path.
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" "mkdir -p '${REMOTE_DIR}'"
 
@@ -291,53 +372,23 @@ jobs:
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
           for deploy in ${TARGET_DEPLOYS}; do
             echo "Waiting for ${deploy}..."
-              rollout_timeout=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-                "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.progressDeadlineSeconds}'")
-              rollout_timeout=${rollout_timeout:-600}
-              if ! [[ "${rollout_timeout}" =~ ^[0-9]+$ ]]; then
-                rollout_timeout=600
-              fi
-              echo "Using rollout timeout ${rollout_timeout}s for ${deploy}"
+            rollout_timeout=$(get_rollout_timeout "${deploy}")
+            echo "Using rollout timeout ${rollout_timeout}s for ${deploy}"
             if ! ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
                 "k3s kubectl rollout status deployment/${deploy} -n '${NAMESPACE}' --timeout=${rollout_timeout}s"; then
               echo "Rollout failed for ${deploy}. Collecting diagnostics..."
-              ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-                "set +e; \
-                 echo '=== deployment describe ==='; \
-                 k3s kubectl describe deployment/${deploy} -n '${NAMESPACE}'; \
-                 echo '=== deployment image ==='; \
-                 k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.template.spec.containers[*].image}'; \
-                 echo; \
-                 echo '=== replica sets ==='; \
-                 k3s kubectl get rs -n '${NAMESPACE}' --sort-by=.metadata.creationTimestamp; \
-                 echo '=== pods wide ==='; \
-                 k3s kubectl get pods -n '${NAMESPACE}' -o wide; \
-                   echo '=== target pods ==='; \
-                   k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o wide; \
-                   for pod in \$(k3s kubectl get pods -n '${NAMESPACE}' -l app.kubernetes.io/name=${deploy} -o name); do \
-                     echo \"=== describe \${pod} ===\"; \
-                     k3s kubectl describe -n '${NAMESPACE}' \"\${pod}\"; \
-                     echo \"=== logs current \${pod} ===\"; \
-                     k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --tail=200; \
-                     echo \"=== logs previous \${pod} ===\"; \
-                     k3s kubectl logs -n '${NAMESPACE}' \"\${pod}\" --all-containers --previous --tail=200; \
-                   done; \
-                 echo '=== recent events ==='; \
-                 k3s kubectl get events -n '${NAMESPACE}' --sort-by=.lastTimestamp | tail -n 50"
+              collect_deployment_diagnostics "${deploy}"
               exit 1
             fi
           done
 
-          # Verify desired replicas are available after rollout.
+          # Wait for the controller status to converge after rollout before enforcing availability.
           for deploy in ${TARGET_DEPLOYS}; do
-            desired=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-              "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.spec.replicas}'")
-            available=$(ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
-              "k3s kubectl get deployment/${deploy} -n '${NAMESPACE}' -o jsonpath='{.status.availableReplicas}'")
-            available=${available:-0}
-            echo "Replica check ${deploy}: desired=${desired} available=${available}"
-            if [ "${available}" -lt "${desired}" ]; then
-              echo "Deployment ${deploy} does not have enough available replicas"
+            availability_timeout=$(get_rollout_timeout "${deploy}")
+            echo "Waiting for stable availability on ${deploy}..."
+            if ! wait_for_available_replicas "${deploy}" "${availability_timeout}"; then
+              echo "Deployment ${deploy} does not have enough available replicas. Collecting diagnostics..."
+              collect_deployment_diagnostics "${deploy}"
               exit 1
             fi
           done
