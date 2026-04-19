@@ -24,6 +24,11 @@ on:
           - bff-mobile
           - bff-backoffice
           - backoffice
+      source_ref:
+        description: "Optional source repository ref/SHA to build when dispatching cross-repo"
+        required: false
+        default: ""
+        type: string
       publish_prod_tag:
         description: "Also publish mutable :prod tag (manual promotion only)"
         required: true
@@ -234,6 +239,7 @@ jobs:
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
           echo "repo=${REPO_NAME}" >> "$GITHUB_OUTPUT"
           echo "checkout_path=${CHECKOUT_PATH_MAP[${{ matrix.service }}]}" >> "$GITHUB_OUTPUT"
+          echo "source_ref=${{ inputs.source_ref }}" >> "$GITHUB_OUTPUT"
 
           # Determine build context and target
           declare -A CONTEXT_MAP=(
@@ -273,6 +279,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
+          ref: ${{ steps.meta.outputs.source_ref }}
           path: source/${{ steps.meta.outputs.checkout_path }}
           fetch-depth: 20
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
