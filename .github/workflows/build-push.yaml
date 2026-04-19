@@ -274,8 +274,54 @@ jobs:
         with:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
           path: source/${{ steps.meta.outputs.checkout_path }}
-          fetch-depth: 1
+          fetch-depth: 20
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+
+      - name: Generate backoffice deployment history
+        if: matrix.service == 'backoffice'
+        working-directory: source/backoffice
+        run: |
+          set -euo pipefail
+
+          node <<'EOF'
+          const { execSync } = require('node:child_process');
+          const { writeFileSync } = require('node:fs');
+          const { join } = require('node:path');
+
+          function formatUtc(date) {
+            const pad = (value) => String(value).padStart(2, '0');
+            return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`;
+          }
+
+          const currentSha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+          const currentVersion = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+          const currentDeployedAt = formatUtc(new Date());
+          const rawLog = execSync('git log -n 12 --date=iso-strict --pretty=format:%H%x1f%h%x1f%cI%x1f%s', {
+            encoding: 'utf8',
+          }).trim();
+
+          const history = rawLog.length === 0
+            ? []
+            : rawLog.split('\n').map((line, index) => {
+                const [commitSha, version, committedAt, summary] = line.split('\x1f');
+                return {
+                  version,
+                  deployedAt: index === 0 ? currentDeployedAt : formatUtc(new Date(committedAt)),
+                  commitSha,
+                  summary,
+                };
+              });
+
+          const payload = {
+            environment: 'stg',
+            currentVersion,
+            currentDeployedAt,
+            history,
+          };
+
+          writeFileSync(join('src', 'data', 'deployment-history.json'), `${JSON.stringify(payload, null, 2)}\n`);
+          console.log(`Generated deployment-history.json for ${currentVersion} (${currentSha})`);
+          EOF
 
       - name: Checkout shared-sdk-client
         if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
