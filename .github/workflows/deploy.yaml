@@ -160,7 +160,11 @@ jobs:
 
             image_tag="${{ github.event.workflow_run.head_sha }}"
             image_tag="${image_tag::8}"
-            restart_after_apply="false"
+
+            # workflow_run deploys derive the image tag from the platform-infra SHA,
+            # which can be reused across multiple source builds. Force a restart so
+            # Kubernetes repulls the tag even when the rendered Deployment spec is unchanged.
+            restart_after_apply="true"
 
             while IFS= read -r service; do
               [[ -n "${service}" ]] || continue
@@ -360,7 +364,7 @@ jobs:
           ssh ${SSH_OPTS} "${K3S_USER}@${K3S_HOST}" \
             "k3s kubectl apply -f '${REMOTE_DIR}/rendered-${ENV}.yaml'"
 
-          # Manual deploys still use mutable env tags and need an explicit restart.
+          # Explicit restarts are required whenever the applied image reference may be reused.
           if [[ "${RESTART_AFTER_APPLY}" == "true" ]]; then
             for deploy in ${TARGET_DEPLOYS}; do
               echo "Restarting ${deploy}..."
@@ -368,7 +372,7 @@ jobs:
                 "k3s kubectl rollout restart deployment/${deploy} -n '${NAMESPACE}'"
             done
           else
-            echo "Skipping forced restarts because this deploy uses immutable image tags from the triggering build run."
+            echo "Skipping forced restarts because the applied image references are unique for this run."
           fi
 
           # Wait for rollouts using one SSH session per deployment to avoid long-lived broken pipes.
