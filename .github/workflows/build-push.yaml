@@ -35,6 +35,12 @@ on:
         default: false
         type: boolean
 
+# Workflow-level permissions: this is the central image build, so the GITHUB_TOKEN
+# only needs read access to source repos and write access to GHCR packages. No
+# other scopes are required (no deployments, no actions:write, no id-token).
+# Cross-repo source checkouts use `secrets.CROSS_REPO_READ_TOKEN` (fine-grained
+# PAT scoped to `contents:read` on the AxiomNode org) instead of the workflow
+# token.
 permissions:
   contents: read
   packages: write

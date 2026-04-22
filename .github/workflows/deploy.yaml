@@ -36,9 +36,13 @@ on:
         default: false
         type: boolean
 
+# Workflow-level permissions are intentionally minimal; the job below does not
+# need to push code or packages. The deploy itself happens over SSH against the
+# self-hosted k3s VPS using `secrets.K3S_SSH_KEY`, so no `id-token` or
+# `packages:` scopes are required for the GITHUB_TOKEN.
 permissions:
-  actions: read
-  contents: read
+  actions: read   # read prior workflow_run artefacts/conclusion
+  contents: read  # checkout this repo
 
 concurrency:
   group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
@@ -252,10 +256,17 @@ jobs:
             exit 1
           fi
 
-          # Setup SSH
+          # Setup SSH. We deliberately funnel the secret through a heredoc and
+          # explicit `::add-mask::` so multi-line PEM contents stay redacted in
+          # the runner logs even if a downstream step accidentally echoes them.
           mkdir -p ~/.ssh
-          echo "$K3S_SSH_KEY" > ~/.ssh/k3s_key
+          umask 077
+          printf '%s\n' "$K3S_SSH_KEY" > ~/.ssh/k3s_key
           chmod 600 ~/.ssh/k3s_key
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            echo "::add-mask::$line"
+          done < ~/.ssh/k3s_key
           if ! ssh-keyscan -H "$K3S_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
             echo "ssh-keyscan could not prefetch the host key for ${K3S_HOST}; continuing with StrictHostKeyChecking=accept-new"
           fi
