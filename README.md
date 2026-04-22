@@ -21,8 +21,9 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - `stg`
 	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
 	- Public domains route through ingress.
-	- `ai-engine` is no longer part of the default staging overlay; the cluster expects an optional external workstation target managed at runtime from backoffice.
-	- When you need in-cluster verification again, use the optional `kubernetes/overlays/stg-with-ai-engine` variant through manual deploy.
+	- The default staging overlay currently deploys the split AI runtime (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) in-cluster.
+	- The llama runtime may remain external and is therefore still a runtime-routing concern rather than a pure manifest concern.
+	- When you need the full in-cluster AI topology again, use the optional `kubernetes/overlays/stg-with-ai-engine` variant through manual deploy.
 	- CI/CD auto-deploy target after successful image builds on `main`.
 
 - `prod`
@@ -36,6 +37,19 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - `environments/`: compose-based integration environments.
 - `terraform/`: infrastructure as code modules.
 - `.github/workflows/`: CI/CD workflows.
+
+## Ownership boundary
+
+This repository owns deployment and packaging policy, not business behavior.
+
+Concrete ownership includes:
+
+- manifest shape and overlay composition
+- image selection and rollout behavior
+- cross-repository build orchestration
+- environment rendering and rollout validation
+
+Service-specific business contracts, route semantics, and domain validation belong in their respective service repositories.
 
 ## CI/CD workflows
 
@@ -76,6 +90,8 @@ Covered automatic chain services:
 - `bff-mobile`
 - `bff-backoffice`
 - `backoffice`
+- `ai-engine-api`
+- `ai-engine-stats`
 - `microservice-quizz`
 - `microservice-wordpass`
 - `microservice-users`
@@ -83,9 +99,21 @@ Covered automatic chain services:
 Not covered by this automatic GHCR-to-k3s chain:
 
 - `mobile-app`
-- `ai-engine`
+- external llama runtime hosts
 
-`ai-engine` can still be deployed to staging deliberately through the optional `stg-with-ai-engine` overlay when you need in-cluster smoke tests or diagnostics measurements.
+The optional `stg-with-ai-engine` overlay is still required when you want the full in-cluster AI topology, including the llama runtime, for controlled smoke tests or diagnostics measurements.
+
+## Effective runtime caveat
+
+`platform-infra` describes deployed resources, but not the whole effective topology.
+
+In particular:
+
+- `bff-backoffice` can persist service-target overrides
+- `api-gateway` can persist the live ai-engine target
+- `ai-engine-api` can persist the active llama target
+
+Operational documentation must therefore be read together with the central runtime-routing documents.
 
 ## Local Dev Stack
 
@@ -128,6 +156,15 @@ QUERY="teorema de pitagoras" CATEGORY_ID=19 NUM_QUESTIONS=3 ./scripts/ai-engine-
 - `K3S_SSH_KEY`
 
 `GITHUB_TOKEN` is used by the build workflow to publish packages to GHCR.
+
+## Repository-local documentation scope
+
+This repository should document:
+
+- what gets built and deployed
+- which overlays exist and when each one is used
+- how automatic versus manual rollout works
+- which parts of runtime behavior are outside declarative manifest ownership
 
 ## Related docs
 

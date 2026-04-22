@@ -67,7 +67,7 @@ for svc in quizz wordpass users; do
     --from-literal="password=${DB_PASS}" \
     --from-literal="database-url=${DATABASE_URL}" \
     --dry-run=client -o yaml | \
-    kubeseal --format yaml --cert sealed-secrets-cert.pem \
+    kubeseal --format yaml --cert secrets/sealed-secrets-cert.pem \
     > "${OUTPUT_DIR}/${svc}-db-secret.yaml"
   generated_files+=("${svc}-db-secret.yaml")
 done
@@ -79,7 +79,7 @@ if [[ -n "${FIREBASE_CREDENTIALS_FILE:-}" ]] && [[ -f "$FIREBASE_CREDENTIALS_FIL
     --namespace="$NAMESPACE" \
     --from-file="firebase-credentials.json=${FIREBASE_CREDENTIALS_FILE}" \
     --dry-run=client -o yaml | \
-    kubeseal --format yaml --cert sealed-secrets-cert.pem \
+    kubeseal --format yaml --cert secrets/sealed-secrets-cert.pem \
     > "${OUTPUT_DIR}/firebase-credentials.yaml"
   generated_files+=("firebase-credentials.yaml")
 fi
