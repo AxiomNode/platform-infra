@@ -55,7 +55,7 @@ jobs:
     outputs:
       services: ${{ steps.changes.outputs.services }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -119,7 +119,7 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate cross-repo token
         run: |
@@ -282,7 +282,7 @@ jobs:
           echo "target=${TARGET_MAP[${{ matrix.service }}]:-}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout service source repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
           ref: ${{ steps.meta.outputs.source_ref }}
@@ -338,7 +338,7 @@ jobs:
 
       - name: Checkout shared-sdk-client
         if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: AxiomNode/shared-sdk-client
           path: source/shared-sdk-client
@@ -347,7 +347,7 @@ jobs:
 
       - name: Checkout contracts-and-schemas
         if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: AxiomNode/contracts-and-schemas
           path: source/contracts-and-schemas

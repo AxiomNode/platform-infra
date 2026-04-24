@@ -57,7 +57,7 @@ jobs:
     environment:
       name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Determine environment
         id: env
