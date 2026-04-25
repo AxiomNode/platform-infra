@@ -42,6 +42,8 @@ spec:
               value: "production"
             - name: AI_ENGINE_BASE_URL
               value: "http://api-gateway:7005/internal/ai-engine"
+            - name: BATCH_GENERATION_ENABLED
+              value: "false"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
