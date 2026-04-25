@@ -200,9 +200,12 @@ jobs:
       - name: Validate manifests
         if: steps.targets.outputs.mode == 'apply'
         run: |
-          # Install kustomize
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          sudo mv kustomize /usr/local/bin/
+          set -euo pipefail
+          KUSTOMIZE_VERSION="v5.6.0"
+          curl -fsSL -o /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION#v}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp
+          sudo install /tmp/kustomize /usr/local/bin/kustomize
 
           OVERLAY="${{ steps.targets.outputs.overlay }}"
           echo "Validating overlay: ${OVERLAY}"

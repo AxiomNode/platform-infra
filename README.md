@@ -157,6 +157,12 @@ QUERY="teorema de pitagoras" CATEGORY_ID=19 NUM_QUESTIONS=3 ./scripts/ai-engine-
 
 `GITHUB_TOKEN` is used by the build workflow to publish packages to GHCR.
 
+## Local sealed-secret inputs
+
+- Keep real environment secret files only in untracked local paths such as `secrets/dev.env`, `secrets/stg.env`, and `secrets/prod.env`.
+- Use the committed templates under `secrets/*.env.example` as the starting point.
+- Do not commit populated `secrets/*.env` files; `.gitignore` intentionally blocks them.
+
 ## Repository-local documentation scope
 
 This repository should document:
