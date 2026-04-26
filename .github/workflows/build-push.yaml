@@ -115,6 +115,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.services != '[]'
     runs-on: ubuntu-latest
+    environment: build
     strategy:
       fail-fast: false
       matrix:
