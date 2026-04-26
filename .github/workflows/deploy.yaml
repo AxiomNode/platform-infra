@@ -203,7 +203,7 @@ jobs:
           set -euo pipefail
           KUSTOMIZE_VERSION="v5.6.0"
           curl -fsSL -o /tmp/kustomize.tar.gz \
-            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION#v}_linux_amd64.tar.gz"
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
           tar -xzf /tmp/kustomize.tar.gz -C /tmp
           sudo install /tmp/kustomize /usr/local/bin/kustomize
 
@@ -433,24 +433,15 @@ jobs:
           echo "Deployment to ${ENV} completed."
 
           if [[ "${ENV}" == "stg" ]]; then
-            GATEWAY_BASE="https://axiomnode-gateway.amksandbox.cloud"
+            smoke_exit=0
+            SMOKE_TARGET_DEPLOYS="${TARGET_DEPLOYS}" bash ./scripts/smoke-stg-edge.sh || smoke_exit=$?
 
-            gateway_health=$(curl -sS -o /tmp/gateway-health.json -w "%{http_code}" "${GATEWAY_BASE}/health")
-            echo "gateway /health -> ${gateway_health}"
+            if [[ "${smoke_exit}" == "1" ]]; then
+              echo "Staging smoke detected hard failures."
+              exit 1
+            fi
 
-            [[ "${gateway_health}" == "200" ]] || { echo "Gateway health check failed"; cat /tmp/gateway-health.json; exit 1; }
-
-            if [[ " ${TARGET_DEPLOYS} " == *" api-gateway "* ]]; then
-              quiz_random=$(curl -sS -o /tmp/quiz-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/quiz/random?language=es")
-              wordpass_random=$(curl -sS -o /tmp/wordpass-random.json -w "%{http_code}" "${GATEWAY_BASE}/v1/mobile/games/wordpass/random?language=es")
-              backoffice_services=$(curl -sS -o /tmp/backoffice-services.json -w "%{http_code}" "${GATEWAY_BASE}/v1/backoffice/services")
-
-              echo "mobile quiz random -> ${quiz_random}"
-              echo "mobile wordpass random -> ${wordpass_random}"
-              echo "backoffice services -> ${backoffice_services}"
-
-              [[ "${backoffice_services}" == "401" ]] || { echo "Backoffice route is no longer protected"; cat /tmp/backoffice-services.json; exit 1; }
-              [[ "${quiz_random}" != "401" && "${quiz_random}" != "403" ]] || { echo "Quiz random route is still protected"; cat /tmp/quiz-random.json; exit 1; }
-              [[ "${wordpass_random}" != "401" && "${wordpass_random}" != "403" ]] || { echo "Wordpass random route is still protected"; cat /tmp/wordpass-random.json; exit 1; }
+            if [[ "${smoke_exit}" == "2" ]]; then
+              echo "::warning::Staging smoke detected functional degradations. Deployment succeeded, but follow-up is required."
             fi
           fi

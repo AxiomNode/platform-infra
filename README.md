@@ -139,6 +139,12 @@ Run an in-cluster ai-engine canary against staging without port-forwarding, but 
 ./scripts/ai-engine-stg-canary.sh
 ```
 
+Run a public staging smoke for edge, aggregated services, apps, and AI-exposed checks, excluding the llama runtime:
+
+```bash
+./scripts/smoke-stg-edge.sh
+```
+
 Useful overrides:
 
 ```bash
