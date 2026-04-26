@@ -33,7 +33,7 @@ spec:
             runAsGroup: 1000
           command: ["sh", "-c"]
           args:
-            - "npx prisma db push && node dist/app/server.js"
+            - "npx prisma migrate deploy && node dist/app/server.js"
           ports:
             - containerPort: 7100
               protocol: TCP
