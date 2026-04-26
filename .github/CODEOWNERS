@@ -1,0 +1,5 @@
+.github/workflows/  @AxiomNode/platform-team
+.github/actions/    @AxiomNode/platform-team
+Dockerfile*         @AxiomNode/platform-team
+kubernetes/         @AxiomNode/platform-team
+terraform/          @AxiomNode/platform-team
