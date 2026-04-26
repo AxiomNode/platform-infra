@@ -8,6 +8,8 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Workflow-level permissions are intentionally minimal because this workflow
+# only validates tracked infrastructure manifests and does not deploy anything.
 permissions:
   contents: read
 
