@@ -4,6 +4,8 @@ set -euo pipefail
 
 NAMESPACE_DEV="axiomnode-dev"
 NAMESPACE_STG="axiomnode-stg"
+LOCAL_PATH_PROVISIONER_VERSION="v0.0.35"
+LOCAL_PATH_PROVISIONER_MANIFEST_URL="https://raw.githubusercontent.com/rancher/local-path-provisioner/${LOCAL_PATH_PROVISIONER_VERSION}/deploy/local-path-storage.yaml"
 
 echo "=== AxiomNode k3s Setup ==="
 
@@ -32,7 +34,7 @@ echo "[3/7] KUBECONFIG set to $KUBECONFIG"
 echo "[4/7] Ensuring default storage class..."
 DEFAULT_SC=$(k3s kubectl get sc -o jsonpath='{range .items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")]}{.metadata.name}{"\n"}{end}' || true)
 if [[ -z "$DEFAULT_SC" ]]; then
-  k3s kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+  k3s kubectl apply -f "$LOCAL_PATH_PROVISIONER_MANIFEST_URL"
   k3s kubectl patch storageclass local-path -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}' || true
   echo "Default storage class set to local-path."
 else
