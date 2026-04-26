@@ -25,7 +25,7 @@ spec:
       containers:
         - name: microservice-wordpass
           image: ghcr.io/axiomnode/microservice-wordpass-api:stg
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true

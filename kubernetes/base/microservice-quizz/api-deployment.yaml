@@ -25,7 +25,7 @@ spec:
       containers:
         - name: microservice-quizz
           image: ghcr.io/axiomnode/microservice-quizz-api:stg
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
