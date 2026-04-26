@@ -14,6 +14,18 @@ patches:
   - path: patches/replicas.yaml
   # Remove in-cluster databases for prod (use managed DB)
   - path: patches/remove-db-statefulsets.yaml
+  - target:
+      kind: ClusterRoleBinding
+      name: bff-backoffice-kubernetes-nodes-reader
+    patch: |-
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: bff-backoffice-kubernetes-nodes-reader
+      subjects:
+        - kind: ServiceAccount
+          name: bff-backoffice
+          namespace: axiomnode-prod
 
 configMapGenerator:
   - name: microservice-quizz-config

@@ -18,6 +18,7 @@ spec:
         app.kubernetes.io/component: bff
         app.kubernetes.io/part-of: axiomnode
     spec:
+      serviceAccountName: bff-backoffice
       automountServiceAccountToken: false
       securityContext:
         seccompProfile:
@@ -47,6 +48,14 @@ spec:
               value: "http://microservice-wordpass-api:7100"
             - name: USERS_SERVICE_URL
               value: "http://microservice-users-api:7100"
+            - name: KUBERNETES_TOKEN_FILE
+              value: "/var/run/secrets/axiomnode-kubernetes/token"
+            - name: KUBERNETES_CA_FILE
+              value: "/var/run/secrets/axiomnode-kubernetes/ca.crt"
+            - name: KUBERNETES_NAMESPACE_FILE
+              value: "/var/run/secrets/axiomnode-kubernetes/namespace"
+            - name: KUBERNETES_REQUEST_TIMEOUT_MS
+              value: "5000"
           envFrom:
             - configMapRef:
                 name: bff-backoffice-config
@@ -80,7 +89,28 @@ spec:
           volumeMounts:
             - name: routing-state
               mountPath: /var/lib/axiomnode/bff-backoffice
+            - name: kubernetes-api-access
+              mountPath: /var/run/secrets/axiomnode-kubernetes
+              readOnly: true
       volumes:
         - name: routing-state
           persistentVolumeClaim:
             claimName: bff-backoffice-routing-state
+        - name: kubernetes-api-access
+          projected:
+            defaultMode: 420
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+              - downwardAPI:
+                  items:
+                    - path: namespace
+                      fieldRef:
+                        apiVersion: v1
+                        fieldPath: metadata.namespace

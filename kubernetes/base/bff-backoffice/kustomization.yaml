@@ -3,5 +3,7 @@ kind: Kustomization
 
 resources:
   - deployment.yaml
+  - serviceaccount.yaml
+  - rbac.yaml
   - routing-state-pvc.yaml
   - service.yaml

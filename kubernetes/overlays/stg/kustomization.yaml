@@ -11,6 +11,18 @@ resources:
 
 patches:
   - path: patches/replicas.yaml
+  - target:
+      kind: ClusterRoleBinding
+      name: bff-backoffice-kubernetes-nodes-reader
+    patch: |-
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: bff-backoffice-kubernetes-nodes-reader
+      subjects:
+        - kind: ServiceAccount
+          name: bff-backoffice
+          namespace: axiomnode-stg
 
 configMapGenerator:
   - name: microservice-quizz-config
