@@ -1,6 +1,12 @@
 # Stg Environment
 
+Last updated: 2026-05-03.
+
+## Purpose
+
 Staging environment definitions used for pre-production validation.
+
+## Scope
 
 ## Runtime model
 

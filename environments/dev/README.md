@@ -1,6 +1,12 @@
 # Dev Environment
 
+Last updated: 2026-05-03.
+
+## Purpose
+
 Development environment definitions and local-only runtime assets.
+
+## Scope
 
 ## Distribution goal
 

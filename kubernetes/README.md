@@ -1,6 +1,12 @@
 # AxiomNode Kubernetes Infrastructure
 
+Last updated: 2026-05-03.
+
+## Purpose
+
 Kubernetes manifests and deployment tooling for the AxiomNode platform, using **Kustomize** with base + overlay pattern.
+
+## Scope
 
 `dev` runtime is local-first (Docker Compose) and does not use automatic Kubernetes deployment.
 

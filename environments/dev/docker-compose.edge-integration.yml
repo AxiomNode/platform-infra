@@ -67,6 +67,7 @@ services:
     environment:
       QUIZZ_SERVICE_URL: http://host.docker.internal:7100
       WORDPASS_SERVICE_URL: http://host.docker.internal:7101
+      USERS_SERVICE_URL: http://host.docker.internal:7102
       UPSTREAM_GENERATION_TIMEOUT_MS: 300000
     extra_hosts:
       - "host.docker.internal:host-gateway"

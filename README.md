@@ -1,8 +1,12 @@
 # platform-infra
 
+Last updated: 2026-05-03.
+
 Infrastructure and deployment orchestration for the AxiomNode platform.
 
-## What this repository owns
+## Responsibility
+
+### What this repository owns
 
 - Kubernetes base manifests and overlays.
 - Environment-specific compose assets.
@@ -10,7 +14,9 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - Cross-repository image build orchestration.
 - Dev local orchestration for full-stack container runtime.
 
-## Distribution Logic
+## Runtime role
+
+### Distribution logic
 
 - `dev`
 	- Local-only distribution.
@@ -31,14 +37,25 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 	- Can run distributed services and external cloud-managed resources (DB, ingress, scaling).
 	- Deployment is manual/controlled, not the default automatic target.
 
-## Repository structure
+## Runtime surface
+
+### Repository structure
 
 - `kubernetes/`: base resources + `dev`/`stg`/`prod` overlays.
 - `environments/`: compose-based integration environments.
 - `terraform/`: infrastructure as code modules.
 - `.github/workflows/`: CI/CD workflows.
 
-## Ownership boundary
+## Documentation
+
+- `kubernetes/README.md`
+- `kubernetes/base/README.md`
+- `environments/dev/README.md`
+- `environments/stg/README.md`
+- `environments/prod/README.md`
+- `terraform/README.md`
+
+### Ownership boundary
 
 This repository owns deployment and packaging policy, not business behavior.
 
@@ -51,7 +68,9 @@ Concrete ownership includes:
 
 Service-specific business contracts, route semantics, and domain validation belong in their respective service repositories.
 
-## CI/CD workflows
+## Local setup
+
+### CI/CD workflows
 
 - `validate-infra.yml`
 	- Trigger: push (`main`, `develop`), pull request, manual dispatch.
@@ -76,7 +95,9 @@ Service-specific business contracts, route semantics, and domain validation belo
 		- Manual staging deploys can opt into the `stg-with-ai-engine` overlay with `include_ai_engine=true`.
 	- Safety: rollout status + available replica checks fail the workflow if services are not healthy.
 
-## Current automation chain
+## Deployment and operations notes
+
+### Current automation chain
 
 1. A service repo receives a push on `main`.
 2. That repo CI validates build, tests, lint, and any service-specific smoke checks.
@@ -103,7 +124,7 @@ Not covered by this automatic GHCR-to-k3s chain:
 
 The optional `stg-with-ai-engine` overlay is still required when you want the full in-cluster AI topology, including the llama runtime, for controlled smoke tests or diagnostics measurements.
 
-## Effective runtime caveat
+### Effective runtime caveat
 
 `platform-infra` describes deployed resources, but not the whole effective topology.
 
@@ -115,7 +136,7 @@ In particular:
 
 Operational documentation must therefore be read together with the central runtime-routing documents.
 
-## Local Dev Stack
+### Local dev stack
 
 Run all dev services locally with a single script:
 
@@ -131,7 +152,7 @@ Useful commands:
 ./scripts/dev-local-stack.sh down
 ```
 
-## Staging Canary
+### Staging canary
 
 Run an in-cluster ai-engine canary against staging without port-forwarding, but only when you deliberately deploy the optional in-cluster ai-engine manifests:
 
@@ -152,7 +173,9 @@ GAME_TYPE=word-pass QUERY="sistema solar" ./scripts/ai-engine-stg-canary.sh
 QUERY="teorema de pitagoras" CATEGORY_ID=19 NUM_QUESTIONS=3 ./scripts/ai-engine-stg-canary.sh
 ```
 
-## Required secrets in this repository
+## Dependencies and contracts
+
+### Required secrets in this repository
 
 - `CROSS_REPO_READ_TOKEN`
 - `GHCR_PULL_USERNAME`
@@ -163,13 +186,13 @@ QUERY="teorema de pitagoras" CATEGORY_ID=19 NUM_QUESTIONS=3 ./scripts/ai-engine-
 
 `GITHUB_TOKEN` is used by the build workflow to publish packages to GHCR.
 
-## Local sealed-secret inputs
+### Local sealed-secret inputs
 
 - Keep real environment secret files only in untracked local paths such as `secrets/dev.env`, `secrets/stg.env`, and `secrets/prod.env`.
 - Use the committed templates under `secrets/*.env.example` as the starting point.
 - Do not commit populated `secrets/*.env` files; `.gitignore` intentionally blocks them.
 
-## Repository-local documentation scope
+### Repository-local documentation scope
 
 This repository should document:
 
@@ -178,7 +201,7 @@ This repository should document:
 - how automatic versus manual rollout works
 - which parts of runtime behavior are outside declarative manifest ownership
 
-## Related docs
+## References
 
 - `kubernetes/README.md`
 - `environments/dev/README.md`

@@ -1,6 +1,12 @@
 # Prod Environment
 
+Last updated: 2026-05-03.
+
+## Purpose
+
 Production environment definitions and release-hardening assets.
+
+## Scope
 
 ## Runtime model
 
