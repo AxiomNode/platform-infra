@@ -105,7 +105,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 - `bff-backoffice` mounts a small PVC named `bff-backoffice-routing-state` and stores runtime routing overrides at `/var/lib/axiomnode/bff-backoffice/routing-state.json`.
 - `bff-backoffice` also stores shared ai-engine destination presets in the same persisted runtime state file.
 - `api-gateway` mounts a small PVC named `api-gateway-routing-state` and stores legacy live ai-engine target overrides at `/var/lib/axiomnode/api-gateway/routing-state.json`.
-- `ai-engine-api` mounts a small PVC named `ai-engine-api-runtime-state` and stores the active llama target override at `/var/lib/axiomnode/ai-engine-api/llama-target-state.json`.
+- `ai-engine-api` mounts a PVC named `ai-engine-api-data` at `/app/data` for the persistent Chroma vector store and a small PVC named `ai-engine-api-runtime-state` for the active llama target override at `/var/lib/axiomnode/ai-engine-api/llama-target-state.json`.
 - This keeps backoffice service-target overrides and the active llama target alive across pod recreations, not just process restarts.
 - Environment overlays set `ALLOWED_ROUTING_TARGET_HOSTS` so both BFF and gateway only accept approved internal services, private subnets, and approved environment domains.
 

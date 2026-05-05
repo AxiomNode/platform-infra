@@ -49,6 +49,16 @@ spec:
               value: "redis://ai-engine-cache:6379/0"
             - name: AI_ENGINE_EMBEDDING_MODEL
               value: "paraphrase-multilingual-MiniLM-L12-v2"
+            - name: AI_ENGINE_EMBEDDING_DEVICE
+              value: "cpu"
+            - name: AI_ENGINE_EMBEDDING_BATCH_SIZE
+              value: "32"
+            - name: AI_ENGINE_VECTOR_STORE_BACKEND
+              value: "chroma"
+            - name: AI_ENGINE_VECTOR_STORE_PATH
+              value: "/app/data/chroma"
+            - name: AI_ENGINE_VECTOR_STORE_COLLECTION
+              value: "ai_engine_k8s"
             - name: AI_ENGINE_GENERATION_CACHE_NAMESPACE
               value: "v2-rag-20260416-1"
             - name: AI_ENGINE_LLAMA_TIMEOUT_SECONDS
@@ -104,7 +114,8 @@ spec:
           persistentVolumeClaim:
             claimName: ai-engine-llama-models
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: ai-engine-api-data
         - name: runtime-state
           persistentVolumeClaim:
             claimName: ai-engine-api-runtime-state
