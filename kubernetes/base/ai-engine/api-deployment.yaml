@@ -43,6 +43,8 @@ spec:
               value: "1"
             - name: AI_ENGINE_LLAMA_URL
               value: "http://ai-engine-llama:8080/v1/completions"
+            - name: AI_ENGINE_STATS_URL
+              value: "http://ai-engine-stats:8000"
             - name: AI_ENGINE_LLAMA_TARGET_STATE_FILE
               value: "/var/lib/axiomnode/ai-engine-api/llama-target-state.json"
             - name: AI_ENGINE_GENERATION_CACHE_REDIS_URL
