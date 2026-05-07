@@ -92,6 +92,7 @@ Service-specific business contracts, route semantics, and domain validation belo
 	- Notes:
 		- Workflow-driven staging deploys pin changed services to the immutable short-SHA tags produced by the triggering build run.
 		- Manual deploys keep the environment tags (`stg`/`prod`) and still force restarts when a mutable tag must be refreshed.
+		- Manual deploy concurrency is scoped by environment and service, so dispatching two different service deploys does not cancel the earlier run; `service=all` remains serialized per environment.
 		- Manual staging deploys can opt into the `stg-with-ai-engine` overlay with `include_ai_engine=true`.
 	- Safety: rollout status + available replica checks fail the workflow if services are not healthy.
 

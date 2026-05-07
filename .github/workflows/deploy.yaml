@@ -48,7 +48,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}-${{ github.event_name == 'workflow_dispatch' && inputs.service != 'all' && inputs.service || 'all' }}
   cancel-in-progress: true
 
 jobs:

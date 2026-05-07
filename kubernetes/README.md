@@ -152,6 +152,8 @@ This provides:
 
 Manual deploys continue to support environment tags and explicit rollout restart behavior. This is useful for controlled operations and production promotion where the operator wants environment semantics rather than workflow-run immutability.
 
+Manual workflow concurrency is scoped by environment and service. Deploying `bff-mobile` and `bff-backoffice` manually can run independently, while `service=all` stays serialized per environment to avoid overlapping full-environment rollouts.
+
 ### Required GitHub Secrets
 
 | Secret | Description |
