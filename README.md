@@ -1,6 +1,6 @@
 # platform-infra
 
-Last updated: 2026-05-03.
+Last updated: 2026-05-08.
 
 Infrastructure and deployment orchestration for the AxiomNode platform.
 
@@ -13,6 +13,8 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - Infrastructure validation and deployment automation.
 - Cross-repository image build orchestration.
 - Dev local orchestration for full-stack container runtime.
+
+Current platform status: covered service pushes to `main` validate locally in the service repo, dispatch image build/publish here, and roll out automatically to staging. Manual production promotion remains controlled through workflow inputs.
 
 ## Runtime role
 
