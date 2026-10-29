@@ -1,0 +1,375 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# AxiomNode – public demo stack (no private secrets required)
+#
+# Builds every service image LOCALLY from sibling clones and wires them on one
+# Docker network with safe, dummy-only configuration. See docs/RUN-LOCALLY.md.
+#
+# Expected workspace layout (create it with scripts/clone-all.sh):
+#
+#   <workspace>/
+#     platform-infra/          (this repo)
+#     api-gateway/  bff-mobile/  bff-backoffice/
+#     microservice-quizz/  microservice-users/
+#     microservice-wordpass/   <- clone of AxiomNode/microservice-word-pass
+#     backoffice/              <- clone of AxiomNode/Backoffice (lowercase dir)
+#     shared-sdk-client/  contracts-and-schemas/
+#     ai-engine/               (only needed for the optional "ai" profile)
+#
+# The local directory names above are required because the service Dockerfiles
+# COPY from those exact paths.
+#
+# Usage (from platform-infra/):
+#   docker compose -f compose.demo.yml up -d --build            # core stack, no AI
+#   docker compose -f compose.demo.yml --profile ai up -d --build  # + local LLM
+#   docker compose -f compose.demo.yml down -v
+#
+# Every value in this file is a throwaway demo value. Do not reuse any of them
+# outside a local machine.
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: axiomnode-demo
+
+x-node-health: &node-health
+  interval: 10s
+  timeout: 5s
+  start_period: 40s
+  retries: 6
+
+# The service images prune devDependencies, so a bare `npx prisma` would fetch
+# the latest Prisma CLI at start-up, which may not match @prisma/client 5.x.
+# Pin the CLI to the client major the services ship with.
+x-prisma-start: &prisma-start
+  ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
+
+services:
+  # ───────────────────────────── Databases ───────────────────────────────────
+  quiz-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: quizdb
+      POSTGRES_USER: quiz
+      POSTGRES_PASSWORD: quiz
+    ports:
+      - "7432:5432"
+    volumes:
+      - quiz_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quiz -d quizdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpass-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: wordpassdb
+      POSTGRES_USER: wordpass
+      POSTGRES_PASSWORD: wordpass
+    ports:
+      - "7433:5432"
+    volumes:
+      - wordpass_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wordpass -d wordpassdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  users-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: usersdb
+      POSTGRES_USER: users
+      POSTGRES_PASSWORD: users
+    ports:
+      - "7434:5432"
+    volumes:
+      - users_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U users -d usersdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ──────────────────────────── Microservices ────────────────────────────────
+  microservice-quizz:
+    image: axiomnode-demo/microservice-quizz:local
+    command: *prisma-start
+    build:
+      context: ..
+      dockerfile: microservice-quizz/src/Dockerfile
+    env_file:
+      - ../microservice-quizz/src/.env.example
+    environment:
+      SERVICE_PORT: "7100"
+      DATABASE_URL: postgresql://quiz:quiz@quiz-db:5432/quizdb?schema=public
+      AI_ENGINE_BASE_URL: http://ai-api:8001
+      # No AI by default: keep the periodic generator off and fail fast.
+      BATCH_GENERATION_ENABLED: "false"
+      AI_ENGINE_REQUEST_TIMEOUT_MS: "120000"
+      AI_ENGINE_RETRY_MAX_ATTEMPTS: "1"
+    depends_on:
+      quiz-db:
+        condition: service_healthy
+    ports:
+      - "7100:7100"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  microservice-wordpass:
+    image: axiomnode-demo/microservice-wordpass:local
+    command: *prisma-start
+    build:
+      context: ..
+      dockerfile: microservice-wordpass/src/Dockerfile
+    env_file:
+      - ../microservice-wordpass/src/.env.example
+    environment:
+      SERVICE_PORT: "7100"
+      DATABASE_URL: postgresql://wordpass:wordpass@wordpass-db:5432/wordpassdb?schema=public
+      AI_ENGINE_BASE_URL: http://ai-api:8001
+      BATCH_GENERATION_ENABLED: "false"
+      AI_ENGINE_REQUEST_TIMEOUT_MS: "120000"
+      AI_ENGINE_RETRY_MAX_ATTEMPTS: "1"
+    depends_on:
+      wordpass-db:
+        condition: service_healthy
+    ports:
+      - "7101:7100"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  microservice-users:
+    image: axiomnode-demo/microservice-users:local
+    command: *prisma-start
+    build:
+      context: ..
+      dockerfile: microservice-users/src/Dockerfile
+    env_file:
+      - ../microservice-users/src/.env.example
+    environment:
+      SERVICE_PORT: "7100"
+      DATABASE_URL: postgresql://users:users@users-db:5432/usersdb?schema=public
+      # Existing local-development mode of microservice-users: with strict auth
+      # off, requests without a bearer token may identify themselves with the
+      # `x-dev-firebase-uid` header. Never set this to false outside a laptop.
+      FIREBASE_STRICT_AUTH: "false"
+      FIREBASE_PROJECT_ID: ""
+      FIREBASE_CLIENT_EMAIL: ""
+      FIREBASE_PRIVATE_KEY: ""
+      FIREBASE_CREDENTIALS_JSON: ""
+      INSPECTOR_EMAILS: ""
+      # The Backoffice dev login uses this UID by default; it becomes SuperAdmin.
+      SUPERADMIN_FIREBASE_UID: admin-dev-uid
+    depends_on:
+      users-db:
+        condition: service_healthy
+    ports:
+      - "7102:7100"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  # ──────────────────────────────── Edge ─────────────────────────────────────
+  bff-mobile:
+    image: axiomnode-demo/bff-mobile:local
+    build:
+      context: ..
+      dockerfile: bff-mobile/src/Dockerfile.edge
+    env_file:
+      - ../bff-mobile/src/.env.example
+    environment:
+      SERVICE_PORT: "7010"
+      QUIZZ_SERVICE_URL: http://microservice-quizz:7100
+      WORDPASS_SERVICE_URL: http://microservice-wordpass:7100
+      USERS_SERVICE_URL: http://microservice-users:7100
+    depends_on:
+      microservice-quizz:
+        condition: service_healthy
+      microservice-wordpass:
+        condition: service_healthy
+      microservice-users:
+        condition: service_healthy
+    ports:
+      - "7010:7010"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  bff-backoffice:
+    image: axiomnode-demo/bff-backoffice:local
+    build:
+      context: ..
+      dockerfile: bff-backoffice/src/Dockerfile.edge
+    env_file:
+      - ../bff-backoffice/src/.env.example
+    environment:
+      SERVICE_PORT: "7011"
+      ALLOWED_ORIGINS: http://localhost:7080,http://localhost:5173,http://localhost:3000
+      USERS_SERVICE_URL: http://microservice-users:7100
+      QUIZZ_SERVICE_URL: http://microservice-quizz:7100
+      WORDPASS_SERVICE_URL: http://microservice-wordpass:7100
+      BFF_MOBILE_URL: http://bff-mobile:7010
+      API_GATEWAY_URL: http://api-gateway:7005
+      AI_ENGINE_STATS_URL: http://ai-stats:8000
+      AI_ENGINE_API_URL: http://ai-api:8001
+      AI_ENGINE_API_KEY: demo_ai_admin_key
+      AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
+      API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
+    depends_on:
+      microservice-users:
+        condition: service_healthy
+    ports:
+      - "7011:7011"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  api-gateway:
+    image: axiomnode-demo/api-gateway:local
+    build:
+      context: ..
+      dockerfile: api-gateway/src/Dockerfile.edge
+    env_file:
+      - ../api-gateway/src/.env.example
+    environment:
+      SERVICE_PORT: "7005"
+      ALLOWED_ORIGINS: http://localhost:7080,http://localhost:5173,http://localhost:3000
+      BFF_MOBILE_URL: http://bff-mobile:7010
+      BFF_BACKOFFICE_URL: http://bff-backoffice:7011
+      AI_ENGINE_API_URL: http://ai-api:8001
+      AI_ENGINE_STATS_URL: http://ai-stats:8000
+      # Empty edge token = no edge auth on public routes (local demo only).
+      EDGE_API_TOKEN: ""
+      API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
+      UPSTREAM_GENERATION_TIMEOUT_MS: "300000"
+    depends_on:
+      bff-mobile:
+        condition: service_healthy
+      bff-backoffice:
+        condition: service_healthy
+    ports:
+      - "7005:7005"
+    healthcheck:
+      <<: *node-health
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+
+  backoffice:
+    image: axiomnode-demo/backoffice:local
+    build:
+      context: ..
+      dockerfile: backoffice/Dockerfile
+    env_file:
+      - ../backoffice/src/.env.example
+    environment:
+      # Read at container start by docker-entrypoint.sh into /config.js.
+      VITE_API_BASE_URL: http://localhost:7005
+      VITE_AUTH_MODE: dev
+      VITE_ADMIN_DEV_UID: admin-dev-uid
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "7080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ─────────────────────── Optional: local AI (profile "ai") ─────────────────
+  # Opt-in because it downloads ~1 GB of Python wheels (CPU torch) plus a small
+  # embedding model on first start, and needs a GGUF model file you download
+  # yourself (see docs/RUN-LOCALLY.md). Nothing here is pulled by default.
+  ai-cache:
+    profiles: ["ai"]
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  llama-server:
+    profiles: ["ai"]
+    image: ghcr.io/ggml-org/llama.cpp:server
+    volumes:
+      - ../ai-engine/src/models:/models:ro
+    command:
+      - --model
+      - /models/${DEMO_LLAMA_MODEL_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - "2048"
+      - --threads
+      - "${DEMO_LLAMA_THREADS:-4}"
+      - --parallel
+      - "1"
+    ports:
+      - "7002:8080"
+
+  ai-stats:
+    profiles: ["ai"]
+    image: axiomnode-demo/ai-engine-stats:local
+    build:
+      context: ../ai-engine/src
+      dockerfile: Dockerfile
+      target: runtime-stats
+    environment:
+      PORT: "8000"
+      AI_ENGINE_DISTRIBUTION: demo
+      AI_ENGINE_RELEASE_VERSION: local
+      AI_ENGINE_GENERATION_API_URL: http://ai-api:8001
+      AI_ENGINE_API_KEY: demo_ai_admin_key
+      AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
+      AI_ENGINE_STATS_API_KEY: demo_ai_stats_key
+    ports:
+      - "7000:8000"
+
+  ai-api:
+    profiles: ["ai"]
+    image: axiomnode-demo/ai-engine-api:local
+    build:
+      context: ../ai-engine/src
+      dockerfile: Dockerfile
+      target: runtime-api
+    environment:
+      PORT: "8001"
+      UVICORN_WORKERS: "1"
+      AI_ENGINE_DISTRIBUTION: demo
+      AI_ENGINE_RELEASE_VERSION: local
+      AI_ENGINE_LLAMA_URL: http://llama-server:8080/v1/completions
+      AI_ENGINE_LLAMA_TIMEOUT_SECONDS: "600"
+      # Small English embedding model (~90 MB) instead of the multilingual default.
+      AI_ENGINE_EMBEDDING_MODEL: ${DEMO_EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      AI_ENGINE_EMBEDDING_DEVICE: cpu
+      AI_ENGINE_VECTOR_STORE_BACKEND: memory
+      AI_ENGINE_GENERATION_CACHE_BACKEND: redis
+      AI_ENGINE_GENERATION_CACHE_REDIS_URL: redis://ai-cache:6379/0
+      AI_ENGINE_GENERATION_CACHE_NAMESPACE: demo
+      AI_ENGINE_STATS_URL: http://ai-stats:8000
+      AI_ENGINE_API_KEY: demo_ai_admin_key
+      AI_ENGINE_GAMES_API_KEY: dev_games_test_key_2026
+      AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
+      AI_ENGINE_STATS_API_KEY: demo_ai_stats_key
+      AI_ENGINE_GENERATION_MAX_IN_FLIGHT: "1"
+      AI_ENGINE_GENERATION_MAX_QUEUE_SIZE: "2"
+    depends_on:
+      ai-cache:
+        condition: service_healthy
+      llama-server:
+        condition: service_started
+    ports:
+      - "7001:8001"
+
+volumes:
+  quiz_db_data:
+  wordpass_db_data:
+  users_db_data:
