@@ -12,9 +12,9 @@ services:
       api-gateway:
         condition: service_healthy
     ports:
-      - "7080:80"
+      - "7080:8080"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 15s
       timeout: 5s
       start_period: 10s

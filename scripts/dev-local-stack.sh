@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # dev-local-stack.sh - Full local development stack for AxiomNode (dev distribution)
 # Usage:
-#   ./scripts/dev-local-stack.sh up [cpu|gpu]
+#   ./scripts/dev-local-stack.sh demo [ai]       # anyone: compose.demo.yml, no secrets (docs/RUN-LOCALLY.md)
+#   ./scripts/dev-local-stack.sh demo-down
+#   ./scripts/dev-local-stack.sh up [cpu|gpu]    # maintainers: needs .env.secrets from the private vault
 #   ./scripts/dev-local-stack.sh down
 #   ./scripts/dev-local-stack.sh status
 #   ./scripts/dev-local-stack.sh logs [service]
@@ -10,23 +12,36 @@ set -euo pipefail
 ACTION="${1:-}"
 AI_PROFILE="${2:-cpu}"
 
+usage() {
+  echo "Usage: $0 <demo|demo-down|up|down|status|logs> [ai|cpu|gpu|service]"
+}
+
 if [[ -z "$ACTION" ]]; then
-  echo "Usage: $0 <up|down|status|logs> [cpu|gpu|service]"
+  usage
   exit 1
 fi
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.."
+# Workspace = directory that contains platform-infra/ and the sibling service clones.
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
+# Two local directory names differ from the GitHub repository names because the
+# service Dockerfiles COPY from these exact paths (scripts/clone-all.sh creates them):
+#   AxiomNode/microservice-word-pass -> microservice-wordpass/
+#   AxiomNode/Backoffice             -> backoffice/
+WORDPASS_DIR="microservice-wordpass"
+BACKOFFICE_DIR="backoffice"
+
+DEMO_COMPOSE="$ROOT_DIR/platform-infra/compose.demo.yml"
 AI_ENGINE_COMPOSE="$ROOT_DIR/ai-engine/src/docker-compose.yml"
 QUIZZ_COMPOSE="$ROOT_DIR/microservice-quizz/docker-compose.yml"
-WORDPASS_COMPOSE="$ROOT_DIR/microservice-wordpass/docker-compose.yml"
+WORDPASS_COMPOSE="$ROOT_DIR/$WORDPASS_DIR/docker-compose.yml"
 USERS_COMPOSE="$ROOT_DIR/microservice-users/docker-compose.yml"
 EDGE_COMPOSE="$ROOT_DIR/platform-infra/environments/dev/docker-compose.edge-integration.yml"
 
 required_env_examples=(
-  "$ROOT_DIR/ai-engine/src/.env:$ROOT_DIR/ai-engine/src/distributions/examples/.env.example"
+  "$ROOT_DIR/ai-engine/src/.env:$ROOT_DIR/ai-engine/src/distributions/dev/windows.env"
   "$ROOT_DIR/microservice-quizz/src/.env:$ROOT_DIR/microservice-quizz/src/.env.example"
-  "$ROOT_DIR/microservice-wordpass/src/.env:$ROOT_DIR/microservice-wordpass/src/.env.example"
+  "$ROOT_DIR/$WORDPASS_DIR/src/.env:$ROOT_DIR/$WORDPASS_DIR/src/.env.example"
   "$ROOT_DIR/microservice-users/src/.env:$ROOT_DIR/microservice-users/src/.env.example"
   "$ROOT_DIR/api-gateway/src/.env:$ROOT_DIR/api-gateway/src/.env.example"
   "$ROOT_DIR/bff-mobile/src/.env:$ROOT_DIR/bff-mobile/src/.env.example"
@@ -36,12 +51,12 @@ required_env_examples=(
 required_secrets=(
   "$ROOT_DIR/ai-engine/src/.env.secrets"
   "$ROOT_DIR/microservice-quizz/src/.env.secrets"
-  "$ROOT_DIR/microservice-wordpass/src/.env.secrets"
+  "$ROOT_DIR/$WORDPASS_DIR/src/.env.secrets"
   "$ROOT_DIR/microservice-users/src/.env.secrets"
   "$ROOT_DIR/api-gateway/src/.env.secrets"
   "$ROOT_DIR/bff-mobile/src/.env.secrets"
   "$ROOT_DIR/bff-backoffice/src/.env.secrets"
-  "$ROOT_DIR/backoffice/.env.secrets"
+  "$ROOT_DIR/$BACKOFFICE_DIR/.env.secrets"
 )
 
 ensure_docker() {
@@ -57,6 +72,41 @@ ensure_docker() {
 
   if ! docker info >/dev/null 2>&1; then
     echo "Error: Docker daemon is not running. Start Docker Desktop/Engine and retry."
+    exit 1
+  fi
+}
+
+# Verify the sibling clones exist under the names the Dockerfiles expect.
+# Extra "<github-repo>:<local-dir>" entries can be passed as arguments.
+ensure_workspace_layout() {
+  local missing=0
+  local entry repo dir
+  for entry in \
+    "contracts-and-schemas:contracts-and-schemas" \
+    "shared-sdk-client:shared-sdk-client" \
+    "api-gateway:api-gateway" \
+    "bff-mobile:bff-mobile" \
+    "bff-backoffice:bff-backoffice" \
+    "microservice-quizz:microservice-quizz" \
+    "microservice-word-pass:$WORDPASS_DIR" \
+    "microservice-users:microservice-users" \
+    "Backoffice:$BACKOFFICE_DIR" \
+    "$@"; do
+    repo="${entry%%:*}"
+    dir="${entry##*:}"
+    if [[ -d "$ROOT_DIR/$dir" ]]; then
+      continue
+    fi
+    missing=1
+    if [[ "$repo" != "$dir" && -d "$ROOT_DIR/$repo" ]]; then
+      echo "Found $ROOT_DIR/$repo but the Dockerfiles expect $ROOT_DIR/$dir - rename it."
+    else
+      echo "Missing sibling clone: $ROOT_DIR/$dir (AxiomNode/$repo)"
+    fi
+  done
+
+  if [[ "$missing" -eq 1 ]]; then
+    echo "Run ./scripts/clone-all.sh from platform-infra/ to create the expected layout."
     exit 1
   fi
 }
@@ -91,9 +141,11 @@ ensure_secrets_files() {
 
   if [[ "$missing" -eq 1 ]]; then
     echo ""
-    echo "Generate/inject secrets first from the private secrets repository:"
-    echo "  cd ../secrets"
-    echo "  node scripts/inject-local-repo-secrets.mjs dev"
+    echo "The 'up' action is the maintainer stack: it expects .env.secrets files"
+    echo "injected from the private vault."
+    echo ""
+    echo "Without vault access, run the public demo stack instead (no secrets):"
+    echo "  $0 demo        # see platform-infra/docs/RUN-LOCALLY.md"
     echo ""
     exit 1
   fi
@@ -118,8 +170,30 @@ compose_ps() {
 }
 
 case "$ACTION" in
+  demo)
+    ensure_docker
+    if [[ "${2:-}" == "ai" ]]; then
+      ensure_workspace_layout "ai-engine:ai-engine"
+      docker compose -f "$DEMO_COMPOSE" --profile ai up -d --build
+    else
+      ensure_workspace_layout
+      docker compose -f "$DEMO_COMPOSE" up -d --build
+    fi
+
+    echo ""
+    echo "Demo stack is up (see platform-infra/docs/RUN-LOCALLY.md)."
+    echo "Backoffice:  http://localhost:7080   (dev login, UID admin-dev-uid)"
+    echo "Gateway:     http://localhost:7005/health"
+    ;;
+
+  demo-down)
+    ensure_docker
+    docker compose -f "$DEMO_COMPOSE" --profile ai down --remove-orphans
+    ;;
+
   up)
     ensure_docker
+    ensure_workspace_layout "ai-engine:ai-engine"
     ensure_env_templates
     ensure_secrets_files
 
@@ -199,7 +273,7 @@ case "$ACTION" in
 
   *)
     echo "Unknown action: $ACTION"
-    echo "Usage: $0 <up|down|status|logs> [cpu|gpu|service]"
+    usage
     exit 1
     ;;
 esac

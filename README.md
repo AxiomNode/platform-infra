@@ -25,6 +25,7 @@ Current platform status: covered service pushes to `main` validate locally in th
 	- Full stack runs via Docker Compose on a developer machine.
 	- Service-to-service connections are local (localhost/host.docker.internal).
 	- Entry point: `scripts/dev-local-stack.sh`.
+	- No access to the private secrets vault? Use the public demo stack: [`docs/RUN-LOCALLY.md`](docs/RUN-LOCALLY.md) (`compose.demo.yml`, everything built from source).
 
 - `stg`
 	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
