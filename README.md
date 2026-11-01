@@ -14,7 +14,7 @@ Infrastructure and deployment orchestration for the AxiomNode platform.
 - Cross-repository image build orchestration.
 - Dev local orchestration for full-stack container runtime.
 
-Current platform status: covered service pushes to `main` validate locally in the service repo, dispatch image build/publish here, and roll out automatically to staging. Manual production promotion remains controlled through workflow inputs.
+Current platform status: the stack runs locally with Docker Compose (see [docs/RUN-LOCALLY.md](docs/RUN-LOCALLY.md)). During the thesis, covered service pushes to `main` validated in the service repo, dispatched image build/publish here, and rolled out automatically to staging on k3s, with production promotion controlled through workflow inputs. That k3s host no longer exists and `deploy.yaml` is now manual-only (`workflow_dispatch`).
 
 ## Runtime role
 
@@ -101,7 +101,9 @@ Service-specific business contracts, route semantics, and domain validation belo
 
 ## Deployment and operations notes
 
-### Current automation chain
+### Automation chain (historical, as run on k3s)
+
+The automatic trigger below applies to the thesis-era k3s setup; today `deploy.yaml` only runs when dispatched by hand.
 
 1. A service repo receives a push on `main`.
 2. That repo CI validates build, tests, lint, and any service-specific smoke checks.
