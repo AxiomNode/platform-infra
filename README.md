@@ -28,7 +28,7 @@ Current platform status: the stack runs locally with Docker Compose (see [docs/R
 	- No access to the private secrets vault? Use the public demo stack: [`docs/RUN-LOCALLY.md`](docs/RUN-LOCALLY.md) (`compose.demo.yml`, everything built from source).
 
 - `stg`
-	- Remote Kubernetes distribution on `sebss@amksandbox.cloud`.
+	- Remote Kubernetes distribution on the staging VPS (SSH target `<k3s-user>@<k3s-host>`).
 	- Public domains route through ingress.
 	- The default staging overlay currently deploys the split AI runtime (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) in-cluster.
 	- The llama runtime may remain external and is therefore still a runtime-routing concern rather than a pure manifest concern.
@@ -162,11 +162,13 @@ Useful commands:
 
 Run an in-cluster ai-engine canary against staging without port-forwarding, but only when you deliberately deploy the optional in-cluster ai-engine manifests:
 
+`SSH_HOST` (`<user>@<k3s-host>`) is required and no longer has a default:
+
 ```bash
-./scripts/ai-engine-stg-canary.sh
+SSH_HOST=<user>@<k3s-host> ./scripts/ai-engine-stg-canary.sh
 ```
 
-Run a public staging smoke for edge, aggregated services, apps, and AI-exposed checks, excluding the llama runtime:
+Run a public staging smoke for edge, aggregated services, apps, and AI-exposed checks, excluding the llama runtime (it also asserts that `/internal/*` answers 404 on the public gateway host):
 
 ```bash
 ./scripts/smoke-stg-edge.sh

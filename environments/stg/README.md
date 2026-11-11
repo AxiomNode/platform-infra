@@ -10,7 +10,7 @@ Staging environment definitions used for pre-production validation.
 
 ## Runtime model
 
-- Target cluster: Kubernetes on `sebss@amksandbox.cloud`.
+- Target cluster: Kubernetes (k3s) on the staging VPS (SSH target `<k3s-user>@<k3s-host>`, the `K3S_USER`/`K3S_HOST` secrets).
 - Public ingress domains:
 	- `https://axiomnode-backoffice.amksandbox.cloud`
 	- `https://axiomnode-gateway.amksandbox.cloud`

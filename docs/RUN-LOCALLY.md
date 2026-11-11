@@ -14,7 +14,7 @@ the configuration uses only the dummy values committed in each service's
 - Git and a POSIX shell (Linux, macOS, WSL or Git Bash on Windows).
 - About 6 GB free disk for images. Internet access for the first build
   (npm packages, base images, and Prisma CLI on first container start).
-- Free host ports: `7005`, `7010`, `7011`, `7080`, `7100`-`7102`, `7432`-`7434`
+- Free host ports (bound to `127.0.0.1` only): `7005`, `7010`, `7011`, `7080`, `7100`-`7102`, `7432`-`7434`
   (plus `7000`-`7002` with the optional AI profile).
 
 ## 1. Clone the workspace
@@ -58,6 +58,28 @@ docker compose -f compose.demo.yml up -d --build
 # or: ./scripts/dev-local-stack.sh demo
 ```
 
+The `dev-local-stack.sh demo` helper first creates a git-ignored
+`platform-infra/.env` holding a random Postgres password
+(`DEMO_POSTGRES_PASSWORD`) and a random `DEMO_INTERNAL_SERVICE_TOKEN`. When you
+call `docker compose` directly, create that file yourself first (once):
+
+```bash
+printf 'DEMO_POSTGRES_PASSWORD=%s\nDEMO_INTERNAL_SERVICE_TOKEN=%s\n' \
+  "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" > .env
+```
+
+If you skip it, compose falls back to a fixed placeholder password, which is
+only tolerable because every published port is bound to `127.0.0.1`.
+
+> **Security defaults.** All published ports (gateway, BFFs, microservices,
+> Backoffice and the three Postgres instances) listen on `127.0.0.1` only, so
+> nothing is reachable from your LAN. The demo still runs with
+> `FIREBASE_STRICT_AUTH=false` (header-based identity) and an empty edge token,
+> so never change the bindings to `0.0.0.0` or expose the ports through a tunnel
+> or reverse proxy. If you previously started the demo with the old fixed
+> `quiz`/`wordpass`/`users` passwords, run `down -v` once: existing volumes keep
+> the password they were created with.
+
 The first build takes several minutes. Check progress with
 `docker compose -f compose.demo.yml ps` until every service is `healthy`.
 
@@ -69,9 +91,9 @@ The first build takes several minutes. Check progress with
 | API gateway             | http://localhost:7005/health     | Public entry point                      |
 | bff-mobile              | http://localhost:7010/health     |                                         |
 | bff-backoffice          | http://localhost:7011/health     |                                         |
-| microservice-quizz      | http://localhost:7100/health     | Postgres on `7432` (`quiz`/`quiz`)      |
-| microservice-wordpass   | http://localhost:7101/health     | Postgres on `7433` (`wordpass`/`wordpass`) |
-| microservice-users      | http://localhost:7102/health     | Postgres on `7434` (`users`/`users`)    |
+| microservice-quizz      | http://localhost:7100/health     | Postgres on `7432` (user `quiz`)        |
+| microservice-wordpass   | http://localhost:7101/health     | Postgres on `7433` (user `wordpass`)    |
+| microservice-users      | http://localhost:7102/health     | Postgres on `7434` (user `users`)       |
 
 ### Smoke test
 
@@ -141,7 +163,7 @@ Extra ports with this profile: ai-stats `7000`, ai-api `7001`, llama.cpp `7002`.
 | Firebase Auth | Not used. `microservice-users` runs with its existing local-development switch `FIREBASE_STRICT_AUTH=false`, which accepts the `x-dev-firebase-uid` header when no bearer token is sent. Real Google/Firebase sign-in does not work. The Firebase Auth emulator is **not** wired: the service only initialises `firebase-admin` from service-account credentials, so supporting the emulator would need a code change in `microservice-users`. |
 | AI engine | Off by default. Microservice generation endpoints return an upstream error, and the mobile game endpoints have no stored games to serve. Enable the `ai` profile to generate them locally. |
 | Seed data | Databases start empty. |
-| Edge token / admin tokens | `EDGE_API_TOKEN` is empty (no edge auth). Admin tokens are fixed dummy strings such as `demo_gateway_admin_token`. |
+| Edge token / admin tokens | `EDGE_API_TOKEN` is empty (no edge auth). Admin tokens are fixed dummy strings such as `demo_gateway_admin_token`. `INTERNAL_SERVICE_TOKEN` (service-to-service auth for the gateway `/internal/*` routes) is taken from `DEMO_INTERNAL_SERVICE_TOKEN`. |
 | Kubernetes-backed backoffice features | Deployment/rollout panels need a cluster API and show errors or empty states. |
 | Observability stack, Sentry, Mobile app | Not part of the demo. The mobile app targets the hosted environments. |
 | Published images | Not used. GHCR images are private, so everything is built locally. |

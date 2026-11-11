@@ -9,7 +9,10 @@ spec:
     - web
     - websecure
   routes:
-    - match: Host(`axiomnode-gateway.amksandbox.cloud`)
+    # Only explicit public paths reach the gateway. /internal/* (ai-engine and
+    # admin routes), /metrics and /monitor/* are NOT routed publicly: Traefik
+    # answers 404 for them. In-cluster callers use http://api-gateway:7005.
+    - match: Host(`axiomnode-gateway.amksandbox.cloud`) && (Path(`/health`) || PathPrefix(`/v1/`))
       kind: Rule
       services:
         - name: api-gateway

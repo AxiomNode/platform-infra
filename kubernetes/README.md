@@ -100,6 +100,32 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 
 `ai-engine` remains available in `kubernetes/base/ai-engine`, and the split-runtime resources (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) are also available through `kubernetes/base/ai-engine-runtime`. The default `stg` overlay now deploys the runtime services in-cluster while expecting only the llama.cpp server to live on an external workstation. When you need the old fully in-cluster staging topology for smoke tests or benchmarking, render `kubernetes/overlays/stg-with-ai-engine` explicitly.
 
+## Public edge exposure and internal auth
+
+- The public ingress objects (`overlays/*/ingress.yaml`) route to `api-gateway`
+  **only** `/health` and `/v1/*`. Everything else, notably `/internal/ai-engine/*`,
+  `/internal/admin/*`, `/metrics` and `/monitor/*`, gets a 404 from the edge.
+  In-cluster callers (microservice-quizz/wordpass use
+  `http://api-gateway:7005/internal/ai-engine`) are unaffected because they do not
+  go through the ingress. If the gateway gains a new public prefix, add it to the
+  ingress explicitly.
+- `INTERNAL_SERVICE_TOKEN` (sent as the `x-internal-token` header) is the shared
+  secret for service-to-service calls to the gateway `/internal/*` routes. Store it
+  in the sealed `*-secret` of `api-gateway`, `bff-backoffice`, `microservice-quizz`
+  and `microservice-wordpass` (see `secrets/*.env.example`); never in a ConfigMap
+  or in git.
+- `TRUST_PROXY` (api-gateway, bff-mobile, microservice-users) controls whether the
+  service trusts `X-Forwarded-For`. Accepted values: `true`, `false` (default),
+  a hop count (`1`, `2`) or a comma-separated CIDR list of trusted proxies. Set it
+  to the real number of proxies: for `stg` the path is Nginx Proxy Manager, then
+  Traefik, so 2 hops; for `prod` it is the ingress controller (and any cloud load
+  balancer in front of it). Too low trusts the proxy IP as the client; too high lets
+  clients spoof their address. It is intentionally not set in the overlays yet.
+- Rollout order: roll out the gateway image that enforces `x-internal-token` (and
+  provision `INTERNAL_SERVICE_TOKEN` in the callers) before, or together with, this
+  ingress change. Ingress-only is safe by itself; the gateway change alone is safe
+  for in-cluster callers only once they send the token.
+
 ## Runtime routing persistence
 
 - `bff-backoffice` mounts a small PVC named `bff-backoffice-routing-state` and stores runtime routing overrides at `/var/lib/axiomnode/bff-backoffice/routing-state.json`.

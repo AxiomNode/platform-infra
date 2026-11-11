@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SSH_HOST="${SSH_HOST:-sebss@amksandbox.cloud}"
+SSH_HOST="${SSH_HOST:?set SSH_HOST to <user>@<k3s-host> of the staging node}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/axiomnode_k3s_ci}"
 NAMESPACE="${NAMESPACE:-axiomnode-stg}"
 POD_NAME="${POD_NAME:-ai-engine-canary}"

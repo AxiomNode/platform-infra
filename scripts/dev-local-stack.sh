@@ -169,9 +169,33 @@ compose_ps() {
   docker compose -f "$compose_file" ps
 }
 
+# Create platform-infra/.env (git-ignored) with a random demo Postgres password
+# and internal service token the first time, unless DEMO_POSTGRES_PASSWORD is already set or an .env exists.
+ensure_demo_env() {
+  local env_file="$ROOT_DIR/platform-infra/.env"
+  if [[ -n "${DEMO_POSTGRES_PASSWORD:-}" || -f "$env_file" ]]; then
+    return
+  fi
+  local pw
+  if command -v openssl >/dev/null 2>&1; then
+    pw="$(openssl rand -hex 16)"
+  else
+    pw="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 32)"
+  fi
+  local tk
+  if command -v openssl >/dev/null 2>&1; then
+    tk="$(openssl rand -hex 16)"
+  else
+    tk="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 32)"
+  fi
+  (umask 077 && printf 'DEMO_POSTGRES_PASSWORD=%s\nDEMO_INTERNAL_SERVICE_TOKEN=%s\n' "$pw" "$tk" > "$env_file")
+  echo "Generated random demo Postgres password and internal token in $env_file"
+}
+
 case "$ACTION" in
   demo)
     ensure_docker
+    ensure_demo_env
     if [[ "${2:-}" == "ai" ]]; then
       ensure_workspace_layout "ai-engine:ai-engine"
       docker compose -f "$DEMO_COMPOSE" --profile ai up -d --build
