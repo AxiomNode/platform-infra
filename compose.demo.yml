@@ -25,6 +25,13 @@
 #
 # Every value in this file is a throwaway demo value. Do not reuse any of them
 # outside a local machine.
+#
+# Hardening: every published port is bound to 127.0.0.1 (nothing is reachable
+# from the LAN), and the Postgres password comes from DEMO_POSTGRES_PASSWORD.
+# `./scripts/dev-local-stack.sh demo` generates a random one into the git-ignored
+# platform-infra/.env on first run; with plain `docker compose` set it yourself
+# (see docs/RUN-LOCALLY.md). If unset, a fixed placeholder is used, which is only
+# acceptable because the databases are reachable from this machine alone.
 # ──────────────────────────────────────────────────────────────────────────────
 
 name: axiomnode-demo
@@ -48,9 +55,9 @@ services:
     environment:
       POSTGRES_DB: quizdb
       POSTGRES_USER: quiz
-      POSTGRES_PASSWORD: quiz
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
     ports:
-      - "7432:5432"
+      - "127.0.0.1:7432:5432"
     volumes:
       - quiz_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -64,9 +71,9 @@ services:
     environment:
       POSTGRES_DB: wordpassdb
       POSTGRES_USER: wordpass
-      POSTGRES_PASSWORD: wordpass
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
     ports:
-      - "7433:5432"
+      - "127.0.0.1:7433:5432"
     volumes:
       - wordpass_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -80,9 +87,9 @@ services:
     environment:
       POSTGRES_DB: usersdb
       POSTGRES_USER: users
-      POSTGRES_PASSWORD: users
+      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
     ports:
-      - "7434:5432"
+      - "127.0.0.1:7434:5432"
     volumes:
       - users_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -102,8 +109,9 @@ services:
       - ../microservice-quizz/src/.env.example
     environment:
       SERVICE_PORT: "7100"
-      DATABASE_URL: postgresql://quiz:quiz@quiz-db:5432/quizdb?schema=public
+      DATABASE_URL: postgresql://quiz:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@quiz-db:5432/quizdb?schema=public
       AI_ENGINE_BASE_URL: http://ai-api:8001
+      INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
       # No AI by default: keep the periodic generator off and fail fast.
       BATCH_GENERATION_ENABLED: "false"
       AI_ENGINE_REQUEST_TIMEOUT_MS: "120000"
@@ -112,7 +120,7 @@ services:
       quiz-db:
         condition: service_healthy
     ports:
-      - "7100:7100"
+      - "127.0.0.1:7100:7100"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -127,8 +135,9 @@ services:
       - ../microservice-wordpass/src/.env.example
     environment:
       SERVICE_PORT: "7100"
-      DATABASE_URL: postgresql://wordpass:wordpass@wordpass-db:5432/wordpassdb?schema=public
+      DATABASE_URL: postgresql://wordpass:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@wordpass-db:5432/wordpassdb?schema=public
       AI_ENGINE_BASE_URL: http://ai-api:8001
+      INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
       BATCH_GENERATION_ENABLED: "false"
       AI_ENGINE_REQUEST_TIMEOUT_MS: "120000"
       AI_ENGINE_RETRY_MAX_ATTEMPTS: "1"
@@ -136,7 +145,7 @@ services:
       wordpass-db:
         condition: service_healthy
     ports:
-      - "7101:7100"
+      - "127.0.0.1:7101:7100"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -151,7 +160,7 @@ services:
       - ../microservice-users/src/.env.example
     environment:
       SERVICE_PORT: "7100"
-      DATABASE_URL: postgresql://users:users@users-db:5432/usersdb?schema=public
+      DATABASE_URL: postgresql://users:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@users-db:5432/usersdb?schema=public
       # Existing local-development mode of microservice-users: with strict auth
       # off, requests without a bearer token may identify themselves with the
       # `x-dev-firebase-uid` header. Never set this to false outside a laptop.
@@ -167,7 +176,7 @@ services:
       users-db:
         condition: service_healthy
     ports:
-      - "7102:7100"
+      - "127.0.0.1:7102:7100"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -193,7 +202,7 @@ services:
       microservice-users:
         condition: service_healthy
     ports:
-      - "7010:7010"
+      - "127.0.0.1:7010:7010"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -218,11 +227,12 @@ services:
       AI_ENGINE_API_KEY: demo_ai_admin_key
       AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
       API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
+      INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
     depends_on:
       microservice-users:
         condition: service_healthy
     ports:
-      - "7011:7011"
+      - "127.0.0.1:7011:7011"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -244,6 +254,7 @@ services:
       # Empty edge token = no edge auth on public routes (local demo only).
       EDGE_API_TOKEN: ""
       API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
+      INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
       UPSTREAM_GENERATION_TIMEOUT_MS: "300000"
     depends_on:
       bff-mobile:
@@ -251,7 +262,7 @@ services:
       bff-backoffice:
         condition: service_healthy
     ports:
-      - "7005:7005"
+      - "127.0.0.1:7005:7005"
     healthcheck:
       <<: *node-health
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -272,7 +283,7 @@ services:
       api-gateway:
         condition: service_healthy
     ports:
-      - "7080:8080"
+      - "127.0.0.1:7080:8080"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 15s
@@ -313,7 +324,7 @@ services:
       - --parallel
       - "1"
     ports:
-      - "7002:8080"
+      - "127.0.0.1:7002:8080"
 
   ai-stats:
     profiles: ["ai"]
@@ -331,7 +342,7 @@ services:
       AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
       AI_ENGINE_STATS_API_KEY: demo_ai_stats_key
     ports:
-      - "7000:8000"
+      - "127.0.0.1:7000:8000"
 
   ai-api:
     profiles: ["ai"]
@@ -367,7 +378,7 @@ services:
       llama-server:
         condition: service_started
     ports:
-      - "7001:8001"
+      - "127.0.0.1:7001:8001"
 
 volumes:
   quiz_db_data:

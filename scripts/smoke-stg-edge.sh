@@ -366,7 +366,9 @@ check_status "ai-engine-api-metrics" GET "${GATEWAY_BASE}/v1/backoffice/services
 check_status "ai-engine-stats-metrics" GET "${GATEWAY_BASE}/v1/backoffice/services/ai-engine-stats/metrics" bearer 200
 check_status "mobile-categories" GET "${GATEWAY_BASE}/v1/mobile/games/categories?language=es" none 200
 check_status "wordpass-random" GET "${GATEWAY_BASE}/v1/mobile/games/wordpass/random?language=es&count=3" none 200
-check_status "ai-health" GET "${GATEWAY_BASE}/internal/ai-engine/health" bearer 200
+# /internal/* must never be reachable through the public ingress (404 from the edge).
+check_status "internal-ai-engine-not-public" GET "${GATEWAY_BASE}/internal/ai-engine/health" bearer 404
+check_status "internal-admin-not-public" GET "${GATEWAY_BASE}/internal/admin/ai-engine/target" bearer 404
 
 if should_check_gateway_metrics; then
   analyze_traffic_metrics "api-gateway" "${GATEWAY_BASE}/v1/backoffice/services/api-gateway/metrics"

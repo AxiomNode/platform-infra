@@ -19,8 +19,19 @@ spec:
     - host: api.axiomnode.com
       http:
         paths:
-          - path: /
+          # Only explicit public paths reach the gateway. /internal/* (ai-engine
+          # and admin routes), /metrics and /monitor/* are not routed publicly
+          # (the ingress controller answers 404). In-cluster callers use
+          # http://api-gateway:7005 directly.
+          - path: /v1
             pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 7005
+          - path: /health
+            pathType: Exact
             backend:
               service:
                 name: api-gateway
