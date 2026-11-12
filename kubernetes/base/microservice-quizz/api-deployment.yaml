@@ -63,6 +63,17 @@ spec:
             limits:
               cpu: "1000m"
               memory: "512Mi"
+          # The start command runs `npx prisma ...` first. Prisma is pruned from
+          # the image, so npx downloads it on every start (CI measured a 160 s
+          # health wait for quizz). Hold liveness/readiness until the app is up
+          # (up to 300 s) so the pod is not killed mid-download.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 7100
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health
