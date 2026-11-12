@@ -10,6 +10,4 @@ resources:
   - stats-service.yaml
   - cache-deployment.yaml
   - cache-service.yaml
-  - llama-deployment.yaml
-  - llama-service.yaml
-  - llama-pvc.yaml
+  - ../ai-engine-llama

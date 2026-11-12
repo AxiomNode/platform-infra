@@ -1,0 +1,172 @@
+# Staging footprint on a single-node k3s (VPS 8 vCPU / 32 GiB).
+#
+# Replicas: the base already sets replicas: 1 for every workload, so staging
+# no longer overrides it to 2. Two replicas on one node protect against a pod
+# restart (seconds) but not against losing the node, and the default rolling
+# update (maxSurge 25% -> 1, maxUnavailable 25% -> 0 for one replica) already
+# gives zero-downtime rollouts. Production keeps 2 replicas, HPA and PDBs.
+#
+# Requests (scheduling reservation) are lowered; LIMITS ARE UNCHANGED, so no
+# workload gets less burst headroom or a lower OOM threshold than before.
+# Nothing below was measured on the host (it is gone); each number states its
+# basis. Re-check with `kubectl top pods -n axiomnode-stg` once a target exists.
+#
+# - Node APIs and edge services, CPU 250m/200m -> 100m: they are I/O-bound
+#   Fastify processes; idle CPU is expected to be well under 50m. 100m is the
+#   value bff-mobile and the Compose stack (0.5 CPU limit) already run with.
+#   Memory requests stay (256Mi against a 512Mi limit).
+# - Postgres, CPU 250m -> 100m: three idle databases with one low-traffic
+#   client each. Memory request stays 256Mi (shared_buffers default is 128MB).
+# - ai-engine-api, 500m/2Gi -> 250m/1Gi: staging runs UVICORN_WORKERS=1, so one
+#   copy of torch + MiniLM (est. 0.5-1 GiB RSS). 250m/1Gi are the values the dev
+#   overlay already uses for the same pod; the 4Gi limit stays for the boot-time
+#   corpus embedding burst.
+# - ai-engine-stats, 250m/256Mi -> 100m/128Mi: same as the dev overlay (limit
+#   stays 500m/512Mi).
+# - ai-engine-cache (Redis), CPU 100m -> 50m: same as the dev overlay. Memory
+#   request stays 128Mi because Redis runs with --maxmemory 128mb.
+# - backoffice (nginx, 50m/64Mi) is already minimal and is not touched.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  template:
+    spec:
+      containers:
+        - name: api-gateway
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bff-backoffice
+spec:
+  template:
+    spec:
+      containers:
+        - name: bff-backoffice
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-quizz-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: microservice-quizz
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-users-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: microservice-users
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-wordpass-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: microservice-wordpass
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: quizz-db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: users-db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: wordpass-db
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests:
+              cpu: "100m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: ai-engine-api
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "1Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-stats
+spec:
+  template:
+    spec:
+      containers:
+        - name: ai-engine-stats
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-engine-cache
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          resources:
+            requests:
+              cpu: "50m"

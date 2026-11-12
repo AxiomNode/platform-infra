@@ -98,7 +98,7 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 | bff-backoffice | `ghcr.io/axiomnode/bff-backoffice` | 7011 | 200m-1 / 256-512Mi |
 | backoffice | `ghcr.io/axiomnode/backoffice` | 80 | 50m-200m / 64-128Mi |
 
-`ai-engine` remains available in `kubernetes/base/ai-engine`, and the split-runtime resources (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) are also available through `kubernetes/base/ai-engine-runtime`. The default `stg` overlay now deploys the runtime services in-cluster while expecting only the llama.cpp server to live on an external workstation. When you need the old fully in-cluster staging topology for smoke tests or benchmarking, render `kubernetes/overlays/stg-with-ai-engine` explicitly.
+`ai-engine` remains available in `kubernetes/base/ai-engine` (it pulls the single llama manifest set from `kubernetes/base/ai-engine-llama`), and the split-runtime resources (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) are also available through `kubernetes/base/ai-engine-runtime`. The default `stg` overlay now deploys the runtime services in-cluster while expecting only the llama.cpp server to live on an external workstation. When you need the old fully in-cluster staging topology for smoke tests or benchmarking, render `kubernetes/overlays/stg-with-ai-engine` explicitly.
 
 ## Runtime routing persistence
 
@@ -176,5 +176,5 @@ Manual workflow concurrency is scoped by environment and service. Deploying `bff
 
 ## Current Capacity Notes
 
-- `stg` now runs `api-gateway`, `bff-mobile`, `bff-backoffice`, and `backoffice` with at least 2 replicas where interactive backoffice traffic benefits from it.
+- `stg` runs every workload with 1 replica (single-node k3s: a second replica does not survive node loss and the default rolling update is already zero-downtime). Requests are right-sized in `overlays/stg/patches/resources.yaml` (limits unchanged); `prod` keeps 2 replicas, HPA and PDBs.
 - `api-gateway` and `bff-backoffice` base resource envelopes were increased after moving `ai-engine` off-cluster, so the VPS can absorb heavier backoffice monitoring and admin traffic without running on the previous tighter CPU/memory ceilings.

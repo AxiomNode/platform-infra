@@ -10,7 +10,7 @@ resources:
   - sealed-secrets
 
 patches:
-  - path: patches/replicas.yaml
+  - path: patches/resources.yaml
   - target:
       kind: ClusterRoleBinding
       name: bff-backoffice-kubernetes-nodes-reader
