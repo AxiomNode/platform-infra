@@ -2,8 +2,10 @@ name: Deploy to Kubernetes
 
 # Manual-only: the k3s host this workflow deploys to over SSH no longer exists,
 # so the automatic trigger (workflow_run after "Build & Push Docker Images")
-# failed on every push with "Permission denied". Build & Push still runs on
-# push; re-add the workflow_run trigger once a deploy target is available again.
+# failed on every push with "Permission denied". Nothing deploys automatically
+# any more: Build & Push only publishes images to GHCR when a service repo (or a
+# person) dispatches it. Re-add the workflow_run trigger once a deploy target is
+# available again.
 on:
   workflow_dispatch:
     inputs:
@@ -54,6 +56,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     if: github.event_name == 'workflow_dispatch'
     environment:
       name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'stg' }}

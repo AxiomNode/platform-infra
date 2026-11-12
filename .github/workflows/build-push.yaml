@@ -1,11 +1,9 @@
 name: Build & Push Docker Images
 
+# Dispatch-only: this repo does not contain the service sources, so a push here
+# can never match a service path and would only produce an empty run. Images are
+# built when a service repo dispatches this workflow (or by hand).
 on:
-  push:
-    branches: [main, develop]
-    paths-ignore:
-      - "**.md"
-      - "docs/**"
   workflow_dispatch:
     inputs:
       service:
@@ -45,6 +43,12 @@ on:
 permissions:
   contents: read
 
+# Queue (never cancel) runs for the same service and ref so a half-pushed image
+# is not left behind.
+concurrency:
+  group: build-push-${{ inputs.service }}-${{ inputs.source_ref || github.ref }}
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   REGISTRY: ghcr.io
@@ -53,6 +57,7 @@ env:
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       services: ${{ steps.changes.outputs.services }}
     steps:
@@ -121,6 +126,7 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.services != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     environment: build
     permissions:
       contents: read
@@ -303,8 +309,12 @@ jobs:
           repository: AxiomNode/${{ steps.meta.outputs.repo }}
           ref: ${{ steps.meta.outputs.source_ref }}
           path: source/${{ steps.meta.outputs.checkout_path }}
-          fetch-depth: 00
+          fetch-depth: 1
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
+
+      - name: Apply workspace-root .dockerignore
+        if: steps.meta.outputs.context == 'source'
+        run: cp ci/service-context.dockerignore "${{ steps.meta.outputs.dockerfile }}.dockerignore"
 
       - name: Checkout shared-sdk-client
         if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
@@ -333,8 +343,8 @@ jobs:
           target: ${{ steps.meta.outputs.target }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
       - name: Build and push (no target)
         if: steps.meta.outputs.target == ''
@@ -344,5 +354,5 @@ jobs:
           file: ${{ steps.meta.outputs.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
