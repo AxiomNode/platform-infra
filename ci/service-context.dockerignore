@@ -1,0 +1,12 @@
+# Applied by .github/workflows/build-push.yaml as "<Dockerfile>.dockerignore"
+# for builds whose context is the multi-repo workspace root ("source").
+# BuildKit only reads <context>/.dockerignore or <Dockerfile>.dockerignore, so the
+# per-service src/.dockerignore files never apply to that context.
+# Patterns are relative to the context root.
+**/.git
+**/.github
+**/node_modules
+**/.env
+**/.env.secrets
+**/npm-debug.log*
+**/coverage

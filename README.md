@@ -33,7 +33,7 @@ Current platform status: the stack runs locally with Docker Compose (see [docs/R
 	- The default staging overlay currently deploys the split AI runtime (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) in-cluster.
 	- The llama runtime may remain external and is therefore still a runtime-routing concern rather than a pure manifest concern.
 	- When you need the full in-cluster AI topology again, use the optional `kubernetes/overlays/stg-with-ai-engine` variant through manual deploy.
-	- CI/CD auto-deploy target after successful image builds on `main`.
+	- Thesis-era auto-deploy target (k3s host no longer exists; `deploy.yaml` is now manual-only).
 
 - `prod`
 	- Final distribution tier for production scalability.
@@ -80,7 +80,7 @@ Service-specific business contracts, route semantics, and domain validation belo
 	- Purpose: validates required infrastructure directories, blocks mutable Kubernetes `:latest` image tags, and renders `dev`/`stg`/`prod` overlays with `kubectl kustomize`.
 
 - `build-push.yaml` (Build & Push Docker Images)
-	- Trigger: push (`main`, `develop`) and manual dispatch.
+	- Trigger: manual dispatch only (service repos dispatch it after their own validation; pushes to this repo no longer trigger it, since the service sources are not here).
 	- Purpose: detects changed services (or selected service), checks out source repos, and publishes images to GHCR.
 	- Notes:
 		- Uses `CROSS_REPO_READ_TOKEN` to access private source repos.
@@ -89,8 +89,8 @@ Service-specific business contracts, route semantics, and domain validation belo
 		- Optional `publish_prod_tag=true` on manual dispatch adds mutable `prod` tags for controlled production promotion.
 
 - `deploy.yaml` (Deploy to Kubernetes)
-	- Trigger: successful completion of `build-push.yaml` on `main`, or manual dispatch.
-	- Current policy: automatic deployment is pinned to `stg`.
+	- Trigger: manual dispatch only (`workflow_dispatch`). The `workflow_run` trigger that deployed `stg` automatically after `build-push.yaml` was removed because the k3s host no longer exists.
+	- Historical policy: automatic deployment was pinned to `stg`.
 	- Purpose: validates manifests, renders the selected overlay, applies manifests to k3s, and waits for rollout.
 	- Notes:
 		- Workflow-driven staging deploys pin changed services to the immutable short-SHA tags produced by the triggering build run.

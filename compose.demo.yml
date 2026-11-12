@@ -48,9 +48,16 @@ x-node-health: &node-health
 x-prisma-start: &prisma-start
   ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # ───────────────────────────── Databases ───────────────────────────────────
   quiz-db:
+    logging: *default-logging
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: quizdb
@@ -67,6 +74,7 @@ services:
       retries: 20
 
   wordpass-db:
+    logging: *default-logging
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: wordpassdb
@@ -83,6 +91,7 @@ services:
       retries: 20
 
   users-db:
+    logging: *default-logging
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: usersdb
@@ -100,6 +109,7 @@ services:
 
   # ──────────────────────────── Microservices ────────────────────────────────
   microservice-quizz:
+    logging: *default-logging
     image: axiomnode-demo/microservice-quizz:local
     command: *prisma-start
     build:
@@ -126,6 +136,7 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   microservice-wordpass:
+    logging: *default-logging
     image: axiomnode-demo/microservice-wordpass:local
     command: *prisma-start
     build:
@@ -151,6 +162,7 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   microservice-users:
+    logging: *default-logging
     image: axiomnode-demo/microservice-users:local
     command: *prisma-start
     build:
@@ -183,6 +195,7 @@ services:
 
   # ──────────────────────────────── Edge ─────────────────────────────────────
   bff-mobile:
+    logging: *default-logging
     image: axiomnode-demo/bff-mobile:local
     build:
       context: ..
@@ -208,6 +221,7 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7010/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   bff-backoffice:
+    logging: *default-logging
     image: axiomnode-demo/bff-backoffice:local
     build:
       context: ..
@@ -238,6 +252,7 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7011/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   api-gateway:
+    logging: *default-logging
     image: axiomnode-demo/api-gateway:local
     build:
       context: ..
@@ -268,6 +283,7 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7005/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   backoffice:
+    logging: *default-logging
     image: axiomnode-demo/backoffice:local
     build:
       context: ..
@@ -296,6 +312,7 @@ services:
   # embedding model on first start, and needs a GGUF model file you download
   # yourself (see docs/RUN-LOCALLY.md). Nothing here is pulled by default.
   ai-cache:
+    logging: *default-logging
     profiles: ["ai"]
     image: redis:7-alpine
     command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
@@ -306,6 +323,7 @@ services:
       retries: 20
 
   llama-server:
+    logging: *default-logging
     profiles: ["ai"]
     image: ghcr.io/ggml-org/llama.cpp:server
     volumes:
@@ -327,6 +345,7 @@ services:
       - "127.0.0.1:7002:8080"
 
   ai-stats:
+    logging: *default-logging
     profiles: ["ai"]
     image: axiomnode-demo/ai-engine-stats:local
     build:
@@ -345,6 +364,7 @@ services:
       - "127.0.0.1:7000:8000"
 
   ai-api:
+    logging: *default-logging
     profiles: ["ai"]
     image: axiomnode-demo/ai-engine-api:local
     build:

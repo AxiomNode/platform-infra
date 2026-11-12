@@ -15,7 +15,8 @@ Infrastructure and deployment orchestration repo for images, manifests, and envi
 
 ## CI/CD notes
 - Service repos dispatch build-push here on push to main.
-- Automatic deploy policy currently targets dev.
+- `build-push.yaml` is dispatch-only (from a service repo or by hand) and publishes images to GHCR.
+- `deploy.yaml` is manual-only: the k3s host it targeted no longer exists, so nothing deploys automatically.
 
 ## LLM editing rules
 - Do not drift overlay values without documenting rationale.
