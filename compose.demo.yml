@@ -240,7 +240,6 @@ services:
       AI_ENGINE_API_URL: http://ai-api:8001
       AI_ENGINE_API_KEY: demo_ai_admin_key
       AI_ENGINE_BRIDGE_API_KEY: dev_bridge_test_key_2026
-      API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
       INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
     depends_on:
       microservice-users:

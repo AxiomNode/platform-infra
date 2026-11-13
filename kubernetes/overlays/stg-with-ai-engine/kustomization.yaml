@@ -8,6 +8,24 @@ resources:
   - ../../base/ai-engine-llama
 
 patches:
+  # The in-cluster llama PVC is present again here, so restore the real models
+  # volume that base/ai-engine-runtime replaced with an emptyDir.
+  - target:
+      kind: Deployment
+      name: ai-engine-api
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ai-engine-api
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: models
+                emptyDir: null
+                persistentVolumeClaim:
+                  claimName: ai-engine-llama-models
   - target:
       kind: Deployment
       name: ai-engine-api

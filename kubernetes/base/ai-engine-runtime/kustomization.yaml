@@ -32,3 +32,21 @@ patches:
       kind: PersistentVolumeClaim
       metadata:
         name: ai-engine-llama-models
+  # llama-models is deleted above, so the ai-engine-api "models" volume cannot
+  # point at that PVC (the pod would stay Pending). llama runs off-cluster in
+  # this topology, so an empty read-only mount at /app/models is enough.
+  - target:
+      kind: Deployment
+      name: ai-engine-api
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: ai-engine-api
+      spec:
+        template:
+          spec:
+            volumes:
+              - name: models
+                persistentVolumeClaim: null
+                emptyDir: {}
