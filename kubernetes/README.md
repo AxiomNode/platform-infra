@@ -27,7 +27,7 @@ kubernetes/
 │   └── backoffice/                # Backoffice frontend (nginx)
 └── overlays/
     ├── dev/                       # Legacy/optional k8s dev overlay (no automatic deploy)
-    ├── stg/                       # k3s VPS — staging (active remote target)
+    ├── stg/                       # k3s VPS — staging (host decommissioned; manual deploy only)
     └── prod/                      # Cloud managed — production
 ```
 
@@ -137,11 +137,11 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 ## CI/CD
 
 - **Build & Push** (`.github/workflows/build-push.yaml`): Detects changed services, builds Docker images, pushes to GHCR.
-- **Deploy** (`.github/workflows/deploy.yaml`): Triggered after successful build on `main` or manually. Current automatic target is `stg`. Automatic deploys render manifests with immutable image tags from the triggering build run; manual deploys keep the environment tags and perform forced restarts when needed.
+- **Deploy** (`.github/workflows/deploy.yaml`): manual dispatch only (`workflow_dispatch`); the k3s staging host no longer exists and the `workflow_run` trigger was removed, so nothing deploys automatically. Manual deploys keep the environment tags and perform forced restarts when needed. The immutable-tag behavior below describes the thesis-era automatic path.
 
-### Covered automatic rollout chain
+### Covered rollout chain (thesis-era, automatic deploy disabled)
 
-The current automatic GHCR-to-k3s staging chain covers:
+The GHCR-to-k3s staging chain covered the following services; today only the image build and publish steps run automatically:
 
 - `api-gateway`
 - `bff-mobile`
@@ -159,13 +159,13 @@ For these services, the intended behavior is:
 2. service repo validation succeeds
 3. service repo dispatches `platform-infra` build workflow
 4. image is published to GHCR
-5. staging rollout runs automatically against `axiomnode-stg`
+5. (disabled) staging rollout used to run automatically against `axiomnode-stg`; it now requires a manual `deploy.yaml` dispatch
 
 `mobile-app` is outside this chain. The external llama.cpp server is also outside this chain because it still runs on a workstation in the split staging topology.
 
 ### Immutable deployment behavior
 
-Automatic staging deploys do not rely on mutable `stg` tags as the authoritative artifact reference. The deploy workflow rewrites the rendered overlay to use the immutable short-SHA images produced by the triggering build run.
+Thesis-era automatic staging deploys did not rely on mutable `stg` tags as the authoritative artifact reference. The deploy workflow rewrote the rendered overlay to use the immutable short-SHA images produced by the triggering build run (that `workflow_run` path is disabled).
 
 This provides:
 
