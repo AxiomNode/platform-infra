@@ -1,6 +1,6 @@
 # platform-infra
 
-Last updated: 2026-05-08.
+Last updated: 2026-11-14.
 
 Infrastructure and deployment orchestration for the AxiomNode platform.
 
@@ -28,10 +28,10 @@ Current platform status: the stack runs locally with Docker Compose (see [docs/R
 	- No access to the private secrets vault? Use the public demo stack: [`docs/RUN-LOCALLY.md`](docs/RUN-LOCALLY.md) (`compose.demo.yml`, everything built from source).
 
 - `stg`
-	- Remote Kubernetes distribution on the staging VPS (SSH target `<k3s-user>@<k3s-host>`).
+	- Kubernetes distribution defined for a k3s staging VPS (SSH target `<k3s-user>@<k3s-host>`); that host no longer exists, so the manifests are rendered and applied only on a manual dispatch.
 	- Public domains route through ingress.
 	- The default staging overlay currently deploys the split AI runtime (`ai-engine-api`, `ai-engine-stats`, `ai-engine-cache`) in-cluster.
-	- The llama runtime may remain external and is therefore still a runtime-routing concern rather than a pure manifest concern.
+	- The llama runtime may remain external; its target is the one runtime-routing concern that lives outside the manifests.
 	- When you need the full in-cluster AI topology again, use the optional `kubernetes/overlays/stg-with-ai-engine` variant through manual deploy.
 	- Thesis-era auto-deploy target (k3s host no longer exists; `deploy.yaml` is now manual-only).
 
@@ -136,8 +136,7 @@ The optional `stg-with-ai-engine` overlay is still required when you want the fu
 
 In particular:
 
-- `api-gateway` can persist the live ai-engine target
-- `ai-engine-api` can persist the active llama target
+- `ai-engine-api` can persist the active llama target (the only runtime routing control; `api-gateway` and `bff-backoffice` hold no routing state)
 
 Operational documentation must therefore be read together with the central runtime-routing documents.
 

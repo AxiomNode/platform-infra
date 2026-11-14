@@ -1,6 +1,6 @@
 # Stg Environment
 
-Last updated: 2026-05-03.
+Last updated: 2026-11-14.
 
 ## Purpose
 
@@ -10,7 +10,7 @@ Staging environment definitions used for pre-production validation.
 
 ## Runtime model
 
-- Target cluster: Kubernetes (k3s) on the staging VPS (SSH target `<k3s-user>@<k3s-host>`, the `K3S_USER`/`K3S_HOST` secrets).
+- Target cluster: Kubernetes (k3s) on the staging VPS (SSH target `<k3s-user>@<k3s-host>`, the `K3S_USER`/`K3S_HOST` secrets). That host no longer exists; the definitions below describe what a manual deploy would apply.
 - Public ingress domains:
 	- `https://axiomnode-backoffice.amksandbox.cloud`
 	- `https://axiomnode-gateway.amksandbox.cloud`
@@ -20,9 +20,8 @@ Staging environment definitions used for pre-production validation.
 ## CI/CD behavior
 
 - Service repos on `main` dispatch image builds to `platform-infra`.
-- `platform-infra` builds/pushes `stg` tags to GHCR.
-- Deploy workflow applies `kubernetes/overlays/stg` automatically after successful build.
-- `ai-engine-api` and `ai-engine-stats` image builds trigger the default k3s rollout because the runtime services are now part of the default staging overlay.
+- `platform-infra` builds/pushes `stg` tags to GHCR (`build-push.yaml`, dispatch-only).
+- `deploy.yaml` is manual-only (`workflow_dispatch`): nothing deploys automatically after a build. A manual dispatch applies `kubernetes/overlays/stg`, which includes `ai-engine-api` and `ai-engine-stats`.
 - Manual deploys can still switch to `kubernetes/overlays/stg-with-ai-engine` by dispatching `deploy.yaml` with `include_ai_engine=true` when you deliberately want llama running in-cluster as well.
 - Deployment keeps services healthy by:
 	- forcing rollout restart for updated tags,
