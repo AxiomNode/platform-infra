@@ -43,9 +43,14 @@ configMapGenerator:
       - LOG_LEVEL=warning
 
 images:
+  # Merged games image (one image, two Deployments). The :prod tag of
+  # microservice-games-api only exists after a manual promotion: run
+  # Build & Push with service=microservice-games and publish_prod_tag=true.
   - name: ghcr.io/axiomnode/microservice-quizz-api
+    newName: ghcr.io/axiomnode/microservice-games-api
     newTag: prod
   - name: ghcr.io/axiomnode/microservice-wordpass-api
+    newName: ghcr.io/axiomnode/microservice-games-api
     newTag: prod
   - name: ghcr.io/axiomnode/microservice-users-api
     newTag: prod
