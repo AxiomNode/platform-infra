@@ -136,7 +136,6 @@ The optional `stg-with-ai-engine` overlay is still required when you want the fu
 
 In particular:
 
-- `bff-backoffice` can persist service-target overrides
 - `api-gateway` can persist the live ai-engine target
 - `ai-engine-api` can persist the active llama target
 
