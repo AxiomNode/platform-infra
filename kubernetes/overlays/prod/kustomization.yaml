@@ -32,7 +32,6 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=prod
       - LOG_LEVEL=warning
-      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
   - name: bff-mobile-config
     literals:
       - DISTRIBUTION=prod
