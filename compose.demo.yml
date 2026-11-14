@@ -267,7 +267,6 @@ services:
       AI_ENGINE_STATS_URL: http://ai-stats:8000
       # Empty edge token = no edge auth on public routes (local demo only).
       EDGE_API_TOKEN: ""
-      API_GATEWAY_ADMIN_TOKEN: demo_gateway_admin_token
       INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
       UPSTREAM_GENERATION_TIMEOUT_MS: "300000"
     depends_on:

@@ -163,7 +163,7 @@ Extra ports with this profile: ai-stats `7000`, ai-api `7001`, llama.cpp `7002`.
 | Firebase Auth | Not used. `microservice-users` runs with its existing local-development switch `FIREBASE_STRICT_AUTH=false`, which accepts the `x-dev-firebase-uid` header when no bearer token is sent. Real Google/Firebase sign-in does not work. The Firebase Auth emulator is **not** wired: the service only initialises `firebase-admin` from service-account credentials, so supporting the emulator would need a code change in `microservice-users`. |
 | AI engine | Off by default. Microservice generation endpoints return an upstream error, and the mobile game endpoints have no stored games to serve. Enable the `ai` profile to generate them locally. |
 | Seed data | Databases start empty. |
-| Edge token / admin tokens | `EDGE_API_TOKEN` is empty (no edge auth). Admin tokens are fixed dummy strings such as `demo_gateway_admin_token`. `INTERNAL_SERVICE_TOKEN` (service-to-service auth for the gateway `/internal/*` routes) is taken from `DEMO_INTERNAL_SERVICE_TOKEN`. |
+| Edge token / admin tokens | `EDGE_API_TOKEN` is empty (no edge auth). `INTERNAL_SERVICE_TOKEN` (service-to-service auth for the gateway `/internal/*` routes) is taken from `DEMO_INTERNAL_SERVICE_TOKEN`. |
 | Kubernetes-backed backoffice features | Deployment/rollout panels need a cluster API and show errors or empty states. |
 | Observability stack, Sentry, Mobile app | Not part of the demo. The mobile app targets the hosted environments. |
 | Published images | Not used. GHCR images are private, so everything is built locally. |

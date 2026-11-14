@@ -37,8 +37,6 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            - name: GATEWAY_ROUTING_STATE_FILE
-              value: "/var/lib/axiomnode/api-gateway/routing-state.json"
             - name: PORT
               value: "7005"
             - name: BFF_MOBILE_URL
@@ -75,10 +73,3 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-          volumeMounts:
-            - name: routing-state
-              mountPath: /var/lib/axiomnode/api-gateway
-      volumes:
-        - name: routing-state
-          persistentVolumeClaim:
-            claimName: api-gateway-routing-state

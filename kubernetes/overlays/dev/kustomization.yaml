@@ -35,7 +35,6 @@ configMapGenerator:
     literals:
       - DISTRIBUTION=dev
       - LOG_LEVEL=debug
-      - ALLOWED_ROUTING_TARGET_HOSTS=localhost,127.0.0.1,host.docker.internal,api-gateway,bff-mobile,bff-backoffice,microservice-users-api,microservice-quizz-api,microservice-wordpass-api,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
   - name: bff-mobile-config
     literals:
       - SERVICE_NAME=bff-mobile
