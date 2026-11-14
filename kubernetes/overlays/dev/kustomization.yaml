@@ -10,6 +10,7 @@ resources:
 
 patches:
   - path: patches/microservices-resources.yaml
+  - path: patches/wordpass-shared-db.yaml
 
 configMapGenerator:
   - name: microservice-quizz-config

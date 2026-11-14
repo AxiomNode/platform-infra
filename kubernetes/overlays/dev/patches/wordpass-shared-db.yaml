@@ -1,0 +1,28 @@
+# Data-merge switch (PLAN-FUSION-GAMES.md, PR 11): word-pass reads and writes the
+# quizz database. Merge and apply ONLY inside the maintenance window of the data
+# merge (runbook E.7), after the verified copy of the word-pass rows into the quizz
+# database. Applying it earlier points word-pass at a database without its rows.
+#
+# - DATABASE_URL reuses the existing quizz-db-secret / database-url key (no secret is
+#   created or re-sealed).
+# - args: the quizz database has the Prisma migration history, so word-pass now runs
+#   `migrate deploy` (a no-op on an up-to-date schema) instead of `db push`. Never run
+#   `migrate deploy` against the OLD word-pass database: it has no history (P3005).
+# Rollback: revert this change (back to wordpass-db-secret and `db push`).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: microservice-wordpass-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: microservice-wordpass
+          args:
+            - "npx prisma migrate deploy && node dist/app/server.js"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: quizz-db-secret
+                  key: database-url
