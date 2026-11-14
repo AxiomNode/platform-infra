@@ -27,6 +27,7 @@ on:
           - ai-engine-stats
           - microservice-quizz
           - microservice-wordpass
+          - microservice-games
           - microservice-users
           - api-gateway
           - bff-mobile
@@ -84,6 +85,7 @@ jobs:
               ai-engine-api|ai-engine-stats) echo "ai-engine-api ai-engine-stats ai-engine-cache" ;;
               microservice-quizz) echo "microservice-quizz-api" ;;
               microservice-wordpass) echo "microservice-wordpass-api" ;;
+              microservice-games) echo "microservice-quizz-api microservice-wordpass-api" ;;
               microservice-users) echo "microservice-users-api" ;;
               api-gateway) echo "api-gateway" ;;
               bff-mobile) echo "bff-mobile" ;;
@@ -99,6 +101,7 @@ jobs:
               ai-engine-stats) echo "ghcr.io/axiomnode/ai-engine-stats" ;;
               microservice-quizz) echo "ghcr.io/axiomnode/microservice-quizz-api" ;;
               microservice-wordpass) echo "ghcr.io/axiomnode/microservice-wordpass-api" ;;
+              microservice-games) echo "ghcr.io/axiomnode/microservice-games-api" ;;
               microservice-users) echo "ghcr.io/axiomnode/microservice-users-api" ;;
               api-gateway) echo "ghcr.io/axiomnode/api-gateway" ;;
               bff-mobile) echo "ghcr.io/axiomnode/bff-mobile" ;;
