@@ -10,7 +10,6 @@
 #     platform-infra/          (this repo)
 #     api-gateway/  bff-mobile/  bff-backoffice/
 #     microservice-quizz/  microservice-users/
-#     microservice-wordpass/   <- clone of AxiomNode/microservice-word-pass
 #     backoffice/              <- clone of AxiomNode/Backoffice (lowercase dir)
 #     shared-sdk-client/  contracts-and-schemas/
 #     ai-engine/               (only needed for the optional "ai" profile)
@@ -42,11 +41,24 @@ x-node-health: &node-health
   start_period: 40s
   retries: 6
 
-# The service images prune devDependencies, so a bare `npx prisma` would fetch
-# the latest Prisma CLI at start-up, which may not match @prisma/client 5.x.
-# Pin the CLI to the client major the services ship with.
+# The microservice-users image prunes devDependencies, so a bare `npx prisma`
+# would fetch the latest Prisma CLI at start-up, which may not match
+# @prisma/client 5.x. Pin the CLI to the client major it ships with.
 x-prisma-start: &prisma-start
   ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
+
+# One merged image runs both games (microservice-quizz/src/Dockerfile); GAME_TYPE
+# selects the game and each game keeps its own database. The image ships a pinned
+# prisma and its own CMD (`prisma db push`, then the server), so the games do not
+# override `command`. `db push` is also the only option on the word-pass database,
+# which has no migration history.
+x-games-api: &games-api
+  image: axiomnode-demo/microservice-games:local
+  build:
+    context: ..
+    dockerfile: microservice-quizz/src/Dockerfile
+  env_file:
+    - ../microservice-quizz/src/.env.example
 
 x-logging: &default-logging
   driver: json-file
@@ -109,16 +121,12 @@ services:
 
   # ──────────────────────────── Microservices ────────────────────────────────
   microservice-quizz:
+    <<: *games-api
     logging: *default-logging
-    image: axiomnode-demo/microservice-quizz:local
-    command: *prisma-start
-    build:
-      context: ..
-      dockerfile: microservice-quizz/src/Dockerfile
-    env_file:
-      - ../microservice-quizz/src/.env.example
     environment:
+      GAME_TYPE: quiz
       SERVICE_PORT: "7100"
+      PRIVATE_DOCS_TOKEN: quiz_private_docs_token
       DATABASE_URL: postgresql://quiz:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@quiz-db:5432/quizdb?schema=public
       AI_ENGINE_BASE_URL: http://ai-api:8001
       INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
@@ -136,16 +144,12 @@ services:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7100/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
 
   microservice-wordpass:
+    <<: *games-api
     logging: *default-logging
-    image: axiomnode-demo/microservice-wordpass:local
-    command: *prisma-start
-    build:
-      context: ..
-      dockerfile: microservice-wordpass/src/Dockerfile
-    env_file:
-      - ../microservice-wordpass/src/.env.example
     environment:
+      GAME_TYPE: word-pass
       SERVICE_PORT: "7100"
+      PRIVATE_DOCS_TOKEN: wordpass_private_docs_token
       DATABASE_URL: postgresql://wordpass:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@wordpass-db:5432/wordpassdb?schema=public
       AI_ENGINE_BASE_URL: http://ai-api:8001
       INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
