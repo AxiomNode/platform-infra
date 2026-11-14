@@ -85,8 +85,10 @@ configMapGenerator:
 
 images:
   - name: ghcr.io/axiomnode/microservice-quizz-api
+    newName: ghcr.io/axiomnode/microservice-games-api
     newTag: stg
   - name: ghcr.io/axiomnode/microservice-wordpass-api
+    newName: ghcr.io/axiomnode/microservice-games-api
     newTag: stg
   - name: ghcr.io/axiomnode/microservice-users-api
     newTag: stg
