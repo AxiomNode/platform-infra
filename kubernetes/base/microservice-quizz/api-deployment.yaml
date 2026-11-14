@@ -40,6 +40,11 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
+            # Selects the game strategy in the merged image; older images ignore it.
+            - name: GAME_TYPE
+              value: "quiz"
+            - name: SERVICE_PORT
+              value: "7100"
             - name: AI_ENGINE_BASE_URL
               value: "http://api-gateway:7005/internal/ai-engine"
             - name: BATCH_GENERATION_ENABLED
@@ -63,10 +68,10 @@ spec:
             limits:
               cpu: "1000m"
               memory: "512Mi"
-          # The start command runs `npx prisma ...` first. Prisma is pruned from
-          # the image, so npx downloads it on every start (CI measured a 160 s
-          # health wait for quizz). Hold liveness/readiness until the app is up
-          # (up to 300 s) so the pod is not killed mid-download.
+          # The start command runs `npx prisma ...` first. Older images pruned
+          # Prisma, so npx downloaded it on every start (CI measured a 160 s
+          # health wait); current builds ship it. Keep the generous startup
+          # window (up to 300 s) so a slow first start is not killed.
           startupProbe:
             httpGet:
               path: /health
