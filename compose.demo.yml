@@ -48,10 +48,14 @@ x-prisma-start: &prisma-start
   ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
 
 # One merged image runs both games (microservice-quizz/src/Dockerfile); GAME_TYPE
-# selects the game and each game keeps its own database. The image ships a pinned
-# prisma and its own CMD (`prisma db push`, then the server), so the games do not
-# override `command`. `db push` is also the only option on the word-pass database,
-# which has no migration history.
+# selects the game. Both games now use the quiz database (quiz-db): the word-pass
+# rows were copied into it (data-merge runbook E in PLAN-FUSION-GAMES.md). The image
+# ships a pinned prisma and its own CMD (`prisma db push`, then the server), so the
+# games do not override `command`. This compose quiz database was built with
+# `db push` and has no `_prisma_migrations` history, so `migrate deploy` would fail
+# with P3005 here: both services keep `db push`, a no-op on an identical schema.
+# wordpass-db is no longer used by any service; it stays until the retention period
+# ends and is removed in a later change.
 x-games-api: &games-api
   image: axiomnode-demo/microservice-games:local
   build:
@@ -150,14 +154,17 @@ services:
       GAME_TYPE: word-pass
       SERVICE_PORT: "7100"
       PRIVATE_DOCS_TOKEN: wordpass_private_docs_token
-      DATABASE_URL: postgresql://wordpass:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@wordpass-db:5432/wordpassdb?schema=public
+      DATABASE_URL: postgresql://quiz:${DEMO_POSTGRES_PASSWORD:-demo-local-only}@quiz-db:5432/quizdb?schema=public
       AI_ENGINE_BASE_URL: http://ai-api:8001
       INTERNAL_SERVICE_TOKEN: ${DEMO_INTERNAL_SERVICE_TOKEN:-demo-internal-token-local-only}
       BATCH_GENERATION_ENABLED: "false"
       AI_ENGINE_REQUEST_TIMEOUT_MS: "120000"
       AI_ENGINE_RETRY_MAX_ATTEMPTS: "1"
     depends_on:
-      wordpass-db:
+      quiz-db:
+        condition: service_healthy
+      # Start after quiz so the two `db push` runs never race on a fresh volume.
+      microservice-quizz:
         condition: service_healthy
     ports:
       - "127.0.0.1:7101:7100"
