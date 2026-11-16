@@ -90,8 +90,8 @@ export GHCR_PULL_TOKEN=<token-with-read-packages>
 
 | Service | Image | Port | Resources (base) |
 |---|---|---|---|
-| microservice-quizz-api | `ghcr.io/axiomnode/microservice-quizz-api` | 7100 | 250m-1 / 256-512Mi |
-| microservice-wordpass-api | `ghcr.io/axiomnode/microservice-wordpass-api` | 7100 | 250m-1 / 256-512Mi |
+| microservice-quizz-api | `ghcr.io/axiomnode/microservice-games-api` (`GAME_TYPE=quiz`) | 7100 | 250m-1 / 256-512Mi |
+| microservice-wordpass-api | `ghcr.io/axiomnode/microservice-games-api` (`GAME_TYPE=word-pass`) | 7100 | 250m-1 / 256-512Mi |
 | microservice-users-api | `ghcr.io/axiomnode/microservice-users-api` | 7100 | 250m-1 / 256-512Mi |
 | api-gateway | `ghcr.io/axiomnode/api-gateway` | 7005 | 200m-1 / 256-512Mi |
 | bff-mobile | `ghcr.io/axiomnode/bff-mobile` | 7010 | 100m-500m / 128-256Mi |

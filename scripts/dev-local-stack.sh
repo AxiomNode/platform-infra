@@ -24,24 +24,21 @@ fi
 # Workspace = directory that contains platform-infra/ and the sibling service clones.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Two local directory names differ from the GitHub repository names because the
-# service Dockerfiles COPY from these exact paths (scripts/clone-all.sh creates them):
-#   AxiomNode/microservice-word-pass -> microservice-wordpass/
-#   AxiomNode/Backoffice             -> backoffice/
-WORDPASS_DIR="microservice-wordpass"
+# One local directory name differs from the GitHub repository name because the
+# service Dockerfile COPYs from this exact path (scripts/clone-all.sh creates it):
+#   AxiomNode/Backoffice -> backoffice/
 BACKOFFICE_DIR="backoffice"
 
 DEMO_COMPOSE="$ROOT_DIR/platform-infra/compose.demo.yml"
 AI_ENGINE_COMPOSE="$ROOT_DIR/ai-engine/src/docker-compose.yml"
-QUIZZ_COMPOSE="$ROOT_DIR/microservice-quizz/docker-compose.yml"
-WORDPASS_COMPOSE="$ROOT_DIR/$WORDPASS_DIR/docker-compose.yml"
+# microservice-games runs both games (quiz and word-pass) from one compose file.
+GAMES_COMPOSE="$ROOT_DIR/microservice-games/docker-compose.yml"
 USERS_COMPOSE="$ROOT_DIR/microservice-users/docker-compose.yml"
 EDGE_COMPOSE="$ROOT_DIR/platform-infra/environments/dev/docker-compose.edge-integration.yml"
 
 required_env_examples=(
   "$ROOT_DIR/ai-engine/src/.env:$ROOT_DIR/ai-engine/src/distributions/dev/windows.env"
-  "$ROOT_DIR/microservice-quizz/src/.env:$ROOT_DIR/microservice-quizz/src/.env.example"
-  "$ROOT_DIR/$WORDPASS_DIR/src/.env:$ROOT_DIR/$WORDPASS_DIR/src/.env.example"
+  "$ROOT_DIR/microservice-games/src/.env:$ROOT_DIR/microservice-games/src/.env.example"
   "$ROOT_DIR/microservice-users/src/.env:$ROOT_DIR/microservice-users/src/.env.example"
   "$ROOT_DIR/api-gateway/src/.env:$ROOT_DIR/api-gateway/src/.env.example"
   "$ROOT_DIR/bff-mobile/src/.env:$ROOT_DIR/bff-mobile/src/.env.example"
@@ -50,8 +47,7 @@ required_env_examples=(
 
 required_secrets=(
   "$ROOT_DIR/ai-engine/src/.env.secrets"
-  "$ROOT_DIR/microservice-quizz/src/.env.secrets"
-  "$ROOT_DIR/$WORDPASS_DIR/src/.env.secrets"
+  "$ROOT_DIR/microservice-games/src/.env.secrets"
   "$ROOT_DIR/microservice-users/src/.env.secrets"
   "$ROOT_DIR/api-gateway/src/.env.secrets"
   "$ROOT_DIR/bff-mobile/src/.env.secrets"
@@ -87,8 +83,7 @@ ensure_workspace_layout() {
     "api-gateway:api-gateway" \
     "bff-mobile:bff-mobile" \
     "bff-backoffice:bff-backoffice" \
-    "microservice-quizz:microservice-quizz" \
-    "microservice-word-pass:$WORDPASS_DIR" \
+    "microservice-games:microservice-games" \
     "microservice-users:microservice-users" \
     "Backoffice:$BACKOFFICE_DIR" \
     "$@"; do
@@ -233,19 +228,16 @@ case "$ACTION" in
 
     LLAMA_SERVICE="llama-server-$AI_PROFILE"
 
-    echo "[1/5] Starting ai-engine stack ($AI_PROFILE profile)..."
+    echo "[1/4] Starting ai-engine stack ($AI_PROFILE profile)..."
     compose_up "$AI_ENGINE_COMPOSE" --profile "$AI_PROFILE" ai-cache "$LLAMA_SERVICE" ai-stats ai-api
 
-    echo "[2/5] Starting microservice-quizz (api + db)..."
-    compose_up "$QUIZZ_COMPOSE"
+    echo "[2/4] Starting microservice-games (quiz + word-pass APIs, one db)..."
+    compose_up "$GAMES_COMPOSE"
 
-    echo "[3/5] Starting microservice-wordpass (api + db)..."
-    compose_up "$WORDPASS_COMPOSE"
-
-    echo "[4/5] Starting microservice-users (api + db)..."
+    echo "[3/4] Starting microservice-users (api + db)..."
     compose_up "$USERS_COMPOSE"
 
-    echo "[5/5] Starting edge stack (backoffice + gateway + bffs)..."
+    echo "[4/4] Starting edge stack (backoffice + gateway + bffs)..."
     compose_up "$EDGE_COMPOSE"
 
     echo ""
@@ -264,8 +256,7 @@ case "$ACTION" in
 
     echo "Stopping microservices..."
     compose_down "$USERS_COMPOSE" || true
-    compose_down "$WORDPASS_COMPOSE" || true
-    compose_down "$QUIZZ_COMPOSE" || true
+    compose_down "$GAMES_COMPOSE" || true
 
     echo "Stopping ai-engine stack..."
     compose_down "$AI_ENGINE_COMPOSE" || true
@@ -276,8 +267,7 @@ case "$ACTION" in
   status)
     ensure_docker
     compose_ps "$AI_ENGINE_COMPOSE" || true
-    compose_ps "$QUIZZ_COMPOSE" || true
-    compose_ps "$WORDPASS_COMPOSE" || true
+    compose_ps "$GAMES_COMPOSE" || true
     compose_ps "$USERS_COMPOSE" || true
     compose_ps "$EDGE_COMPOSE" || true
     ;;
@@ -287,7 +277,7 @@ case "$ACTION" in
     SERVICE="${2:-}"
 
     if [[ -n "$SERVICE" ]]; then
-      docker compose -f "$AI_ENGINE_COMPOSE" -f "$QUIZZ_COMPOSE" -f "$WORDPASS_COMPOSE" -f "$USERS_COMPOSE" -f "$EDGE_COMPOSE" logs -f "$SERVICE"
+      docker compose -f "$AI_ENGINE_COMPOSE" -f "$GAMES_COMPOSE" -f "$USERS_COMPOSE" -f "$EDGE_COMPOSE" logs -f "$SERVICE"
     else
       echo "Provide a service name for logs, for example:"
       echo "  $0 logs api-gateway"

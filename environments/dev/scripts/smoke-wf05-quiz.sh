@@ -20,7 +20,7 @@ check_health() {
     echo "Dependency not ready: $service_name at $url (status=$status)"
     echo "Start the minimal WF-05 stack first:"
     echo "  docker compose -f ai-engine/src/docker-compose.yml --profile cpu up -d --build ai-cache llama-server-cpu ai-stats ai-api"
-    echo "  docker compose -f microservice-quizz/docker-compose.yml up -d --build"
+    echo "  docker compose -f microservice-games/docker-compose.yml up -d --build"
     exit 1
   fi
 }

@@ -7,10 +7,10 @@
 #   ./scripts/clone-all.sh --no-ai    # skip ai-engine (not needed for the core demo)
 #   GIT_BASE=git@github.com:AxiomNode ./scripts/clone-all.sh   # clone over SSH
 #
-# Two repositories are cloned into a directory whose name differs from the
-# GitHub repository name, because the service Dockerfiles COPY from these paths:
-#   AxiomNode/microservice-word-pass -> microservice-wordpass/
-#   AxiomNode/Backoffice             -> backoffice/
+# One repository is cloned into a directory whose name differs from the
+# GitHub repository name, because the service Dockerfile COPYs from this path:
+#   AxiomNode/Backoffice -> backoffice/
+# (word-pass is no longer a separate repository: microservice-games serves both games.)
 set -euo pipefail
 
 GIT_BASE="${GIT_BASE:-https://github.com/AxiomNode}"
@@ -32,8 +32,7 @@ REPOS=(
   "api-gateway:api-gateway"
   "bff-mobile:bff-mobile"
   "bff-backoffice:bff-backoffice"
-  "microservice-quizz:microservice-quizz"
-  "microservice-word-pass:microservice-wordpass"
+  "microservice-games:microservice-games"
   "microservice-users:microservice-users"
   "Backoffice:backoffice"
 )
