@@ -48,16 +48,18 @@ x-prisma-start: &prisma-start
   ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
 
 # One merged image runs both games (microservice-quizz/src/Dockerfile); GAME_TYPE
-# selects the game. Both games now use the quiz database (quiz-db): the word-pass
+# selects the game and both games share the quiz database (quiz-db): the word-pass
 # rows were copied into it (data-merge runbook E in PLAN-FUSION-GAMES.md). The image
-# ships a pinned prisma and its own CMD (`prisma db push`, then the server), so the
-# games do not override `command`. This compose quiz database was built with
-# `db push` and has no `_prisma_migrations` history, so `migrate deploy` would fail
-# with P3005 here: both services keep `db push`, a no-op on an identical schema.
-# wordpass-db is no longer used by any service; it stays until the retention period
-# ends and is removed in a later change.
+# has no schema-sync CMD of its own, so the compose file runs it explicitly. This
+# compose quiz database was built with `db push` and has no `_prisma_migrations`
+# history, so `migrate deploy` would fail with P3005 here: both services keep
+# `db push`, a no-op on an identical schema. The word-pass database service and its
+# `wordpass_db_data` volume were retired; `up -d --remove-orphans` drops the old
+# container and `docker volume rm` the old volume.
 x-games-api: &games-api
   image: axiomnode-demo/microservice-games:local
+  command:
+    ["sh", "-c", "npx --no-install prisma db push --skip-generate && node dist/app/server.js"]
   build:
     context: ..
     dockerfile: microservice-quizz/src/Dockerfile
@@ -85,23 +87,6 @@ services:
       - quiz_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U quiz -d quizdb"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  wordpass-db:
-    logging: *default-logging
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: wordpassdb
-      POSTGRES_USER: wordpass
-      POSTGRES_PASSWORD: ${DEMO_POSTGRES_PASSWORD:-demo-local-only}
-    ports:
-      - "127.0.0.1:7433:5432"
-    volumes:
-      - wordpass_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U wordpass -d wordpassdb"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -411,5 +396,4 @@ services:
 
 volumes:
   quiz_db_data:
-  wordpass_db_data:
   users_db_data:

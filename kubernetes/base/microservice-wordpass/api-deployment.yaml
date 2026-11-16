@@ -33,14 +33,14 @@ spec:
             runAsGroup: 1000
           command: ["sh", "-c"]
           args:
-            - "npx prisma db push && node dist/app/server.js"
+            - "npx prisma migrate deploy && node dist/app/server.js"
           ports:
             - containerPort: 7100
               protocol: TCP
           env:
             - name: NODE_ENV
               value: "production"
-            # Selects the game strategy in the merged image; older images ignore it.
+            # Selects the game strategy in the merged image (always set; do not rely on a default).
             - name: GAME_TYPE
               value: "word-pass"
             - name: SERVICE_PORT
@@ -52,7 +52,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: wordpass-db-secret
+                  name: quizz-db-secret
                   key: database-url
           envFrom:
             - secretRef:

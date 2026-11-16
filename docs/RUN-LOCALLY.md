@@ -72,7 +72,7 @@ If you skip it, compose falls back to a fixed placeholder password, which is
 only tolerable because every published port is bound to `127.0.0.1`.
 
 > **Security defaults.** All published ports (gateway, BFFs, microservices,
-> Backoffice and the three Postgres instances) listen on `127.0.0.1` only, so
+> Backoffice and the two Postgres instances) listen on `127.0.0.1` only, so
 > nothing is reachable from your LAN. The demo still runs with
 > `FIREBASE_STRICT_AUTH=false` (header-based identity) and an empty edge token,
 > so never change the bindings to `0.0.0.0` or expose the ports through a tunnel
@@ -92,7 +92,7 @@ The first build takes several minutes. Check progress with
 | bff-mobile              | http://localhost:7010/health     |                                         |
 | bff-backoffice          | http://localhost:7011/health     |                                         |
 | microservice-quizz      | http://localhost:7100/health     | Postgres on `7432` (user `quiz`)        |
-| microservice-wordpass   | http://localhost:7101/health     | Postgres on `7433` (user `wordpass`)    |
+| microservice-wordpass   | http://localhost:7101/health     | Shares the quiz Postgres on `7432`      |
 | microservice-users      | http://localhost:7102/health     | Postgres on `7434` (user `users`)       |
 
 ### Smoke test

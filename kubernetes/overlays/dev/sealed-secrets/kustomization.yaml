@@ -3,5 +3,4 @@ kind: Kustomization
 
 resources:
   - quizz-db-secret.yaml
-  - wordpass-db-secret.yaml
   - users-db-secret.yaml
