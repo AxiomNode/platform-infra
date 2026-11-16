@@ -38,8 +38,7 @@ Operational commands:
 The script starts:
 
 - `ai-engine` (cache + llama + stats + api)
-- `microservice-quizz` (api + db)
-- `microservice-wordpass` (api + db)
+- `microservice-games` (quiz and word-pass APIs, one shared db)
 - `microservice-users` (api + db)
 - edge stack (`api-gateway`, `bff-mobile`, `bff-backoffice`, `backoffice`)
 

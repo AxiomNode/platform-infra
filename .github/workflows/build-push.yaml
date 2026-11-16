@@ -15,8 +15,6 @@ on:
           - all
           - ai-engine-api
           - ai-engine-stats
-          - microservice-quizz
-          - microservice-wordpass
           - microservice-games
           - microservice-users
           - api-gateway
@@ -69,7 +67,7 @@ jobs:
       - id: changes
         name: Detect changed services
         run: |
-          ALL_SERVICES='["ai-engine-api","ai-engine-stats","microservice-quizz","microservice-wordpass","microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice","backoffice"]'
+          ALL_SERVICES='["ai-engine-api","ai-engine-stats","microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice","backoffice"]'
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.service }}" == "all" ]]; then
             echo "services=${ALL_SERVICES}" >> "$GITHUB_OUTPUT"
@@ -99,8 +97,6 @@ jobs:
 
           declare -A SERVICE_MAP=(
             ["ai-engine/"]="ai-engine-api ai-engine-stats"
-            ["microservice-quizz/"]="microservice-quizz"
-            ["microservice-wordpass/"]="microservice-wordpass"
             ["microservice-games/"]="microservice-games"
             ["microservice-users/"]="microservice-users"
             ["api-gateway/"]="api-gateway"
@@ -158,11 +154,6 @@ jobs:
           SOURCE_REPO="${SERVICE}"
           if [[ "${SERVICE}" == "ai-engine-api" || "${SERVICE}" == "ai-engine-stats" ]]; then
             SOURCE_REPO="ai-engine"
-          elif [[ "${SERVICE}" == "microservice-wordpass" ]]; then
-            SOURCE_REPO="microservice-word-pass"
-          elif [[ "${SERVICE}" == "microservice-games" ]]; then
-            # Merged games code still lives in the microservice-quizz repo until the repo rename.
-            SOURCE_REPO="microservice-quizz"
           fi
 
           TARGET_REPO="AxiomNode/${SOURCE_REPO}"
@@ -180,7 +171,7 @@ jobs:
           fi
 
       - name: Validate token access to dependency repositories
-        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        if: contains(fromJson('["microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
         env:
           GH_TOKEN: ${{ secrets.CROSS_REPO_READ_TOKEN }}
         run: |
@@ -219,9 +210,7 @@ jobs:
           declare -A REPO_MAP=(
             ["ai-engine-api"]="ai-engine"
             ["ai-engine-stats"]="ai-engine"
-            ["microservice-quizz"]="microservice-quizz"
-            ["microservice-wordpass"]="microservice-word-pass"
-            ["microservice-games"]="microservice-quizz"
+            ["microservice-games"]="microservice-games"
             ["microservice-users"]="microservice-users"
             ["api-gateway"]="api-gateway"
             ["bff-mobile"]="bff-mobile"
@@ -232,8 +221,6 @@ jobs:
           declare -A IMAGE_NAME_MAP=(
             ["ai-engine-api"]="ai-engine-api"
             ["ai-engine-stats"]="ai-engine-stats"
-            ["microservice-quizz"]="microservice-quizz-api"
-            ["microservice-wordpass"]="microservice-wordpass-api"
             ["microservice-games"]="microservice-games-api"
             ["microservice-users"]="microservice-users-api"
             ["api-gateway"]="api-gateway"
@@ -248,9 +235,7 @@ jobs:
           declare -A CHECKOUT_PATH_MAP=(
             ["ai-engine-api"]="ai-engine"
             ["ai-engine-stats"]="ai-engine"
-            ["microservice-quizz"]="microservice-quizz"
-            ["microservice-wordpass"]="microservice-wordpass"
-            ["microservice-games"]="microservice-quizz"
+            ["microservice-games"]="microservice-games"
             ["microservice-users"]="microservice-users"
             ["api-gateway"]="api-gateway"
             ["bff-mobile"]="bff-mobile"
@@ -281,8 +266,6 @@ jobs:
           declare -A CONTEXT_MAP=(
             ["ai-engine-api"]="source/ai-engine/src"
             ["ai-engine-stats"]="source/ai-engine/src"
-            ["microservice-quizz"]="source"
-            ["microservice-wordpass"]="source"
             ["microservice-games"]="source"
             ["microservice-users"]="source"
             ["api-gateway"]="source"
@@ -294,9 +277,7 @@ jobs:
           declare -A DOCKERFILE_MAP=(
             ["ai-engine-api"]="source/ai-engine/src/Dockerfile"
             ["ai-engine-stats"]="source/ai-engine/src/Dockerfile"
-            ["microservice-quizz"]="source/microservice-quizz/src/Dockerfile"
-            ["microservice-wordpass"]="source/microservice-wordpass/src/Dockerfile"
-            ["microservice-games"]="source/microservice-quizz/src/Dockerfile"
+            ["microservice-games"]="source/microservice-games/src/Dockerfile"
             ["microservice-users"]="source/microservice-users/src/Dockerfile"
             ["api-gateway"]="source/api-gateway/src/Dockerfile.edge"
             ["bff-mobile"]="source/bff-mobile/src/Dockerfile.edge"
@@ -327,7 +308,7 @@ jobs:
         run: cp ci/service-context.dockerignore "${{ steps.meta.outputs.dockerfile }}.dockerignore"
 
       - name: Checkout shared-sdk-client
-        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        if: contains(fromJson('["microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
         uses: actions/checkout@v5
         with:
           repository: AxiomNode/shared-sdk-client
@@ -336,7 +317,7 @@ jobs:
           token: ${{ secrets.CROSS_REPO_READ_TOKEN }}
 
       - name: Checkout contracts-and-schemas
-        if: contains(fromJson('["microservice-quizz","microservice-wordpass","microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
+        if: contains(fromJson('["microservice-games","microservice-users","api-gateway","bff-mobile","bff-backoffice"]'), matrix.service)
         uses: actions/checkout@v5
         with:
           repository: AxiomNode/contracts-and-schemas

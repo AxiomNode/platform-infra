@@ -19,14 +19,16 @@ the configuration uses only the dummy values committed in each service's
 
 ## 1. Clone the workspace
 
-All repositories must sit next to each other. Two of them are cloned under a
-different local directory name, because the service Dockerfiles `COPY` from
-those exact paths:
+All repositories must sit next to each other. One of them is cloned under a
+different local directory name, because the service Dockerfile `COPY`s from
+that exact path:
 
-| GitHub repository                  | Local directory          |
-| ---------------------------------- | ------------------------ |
-| `AxiomNode/microservice-word-pass` | `microservice-wordpass/` |
-| `AxiomNode/Backoffice`             | `backoffice/`            |
+| GitHub repository      | Local directory |
+| ---------------------- | --------------- |
+| `AxiomNode/Backoffice` | `backoffice/`   |
+
+(`AxiomNode/microservice-games` serves both quiz and word-pass; the old
+`microservice-quizz` and `microservice-word-pass` repositories are no longer cloned.)
 
 The helper script handles this for you:
 
@@ -42,8 +44,8 @@ Equivalent manual loop:
 ```bash
 cd axiomnode
 for pair in contracts-and-schemas shared-sdk-client api-gateway bff-mobile \
-            bff-backoffice microservice-quizz microservice-users ai-engine \
-            microservice-word-pass:microservice-wordpass Backoffice:backoffice; do
+            bff-backoffice microservice-games microservice-users ai-engine \
+            Backoffice:backoffice; do
   repo="${pair%%:*}"; dir="${pair##*:}"
   git -c core.longpaths=true clone "https://github.com/AxiomNode/$repo.git" "$dir"
 done

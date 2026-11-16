@@ -9,7 +9,7 @@
 #   <workspace>/
 #     platform-infra/          (this repo)
 #     api-gateway/  bff-mobile/  bff-backoffice/
-#     microservice-quizz/  microservice-users/
+#     microservice-games/  microservice-users/   (microservice-games serves quiz and word-pass)
 #     backoffice/              <- clone of AxiomNode/Backoffice (lowercase dir)
 #     shared-sdk-client/  contracts-and-schemas/
 #     ai-engine/               (only needed for the optional "ai" profile)
@@ -47,7 +47,7 @@ x-node-health: &node-health
 x-prisma-start: &prisma-start
   ["sh", "-c", "npx --yes prisma@5.22.0 db push --skip-generate && node dist/app/server.js"]
 
-# One merged image runs both games (microservice-quizz/src/Dockerfile); GAME_TYPE
+# One merged image runs both games (microservice-games/src/Dockerfile); GAME_TYPE
 # selects the game and each game keeps its own database. The image ships a pinned
 # prisma and its own CMD (`prisma db push`, then the server), so the games do not
 # override `command`. `db push` is also the only option on the word-pass database,
@@ -56,9 +56,9 @@ x-games-api: &games-api
   image: axiomnode-demo/microservice-games:local
   build:
     context: ..
-    dockerfile: microservice-quizz/src/Dockerfile
+    dockerfile: microservice-games/src/Dockerfile
   env_file:
-    - ../microservice-quizz/src/.env.example
+    - ../microservice-games/src/.env.example
 
 x-logging: &default-logging
   driver: json-file

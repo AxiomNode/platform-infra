@@ -21,8 +21,8 @@ check_health() {
     echo "Dependency not ready: $service_name at $url (status=$status)"
     echo "Start the minimal WF-05 stack first:"
     echo "  API_PORT=7001 docker compose -f ai-engine/src/docker-compose.yml --profile cpu up -d --build ai-cache llama-server-cpu ai-stats ai-api"
-    echo "  docker compose -f microservice-wordpass/docker-compose.yml stop microservice-wordpass"
-    echo "  docker compose -f microservice-wordpass/docker-compose.yml run -d --service-ports -e BATCH_GENERATION_ENABLED=false microservice-wordpass"
+    echo "  docker compose -f microservice-games/docker-compose.yml stop microservice-wordpass"
+    echo "  docker compose -f microservice-games/docker-compose.yml run -d --service-ports -e BATCH_GENERATION_ENABLED=false microservice-wordpass"
     exit 1
   fi
 }
