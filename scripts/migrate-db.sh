@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# migrate-db.sh — Synchronize Prisma schemas for all microservices
+# migrate-db.sh — Synchronize Prisma schemas for the services that use `db push`
+#
+# microservice-quizz-api and microservice-wordpass-api are NOT synced here: both games
+# share the quizz database, which has a Prisma migration history, and apply it on start
+# with `prisma migrate deploy`. Running `db push` against it would bypass that history.
 # Usage: ./migrate-db.sh <environment>
 set -euo pipefail
 
@@ -19,7 +23,7 @@ if command -v k3s &>/dev/null; then
   KUBECTL="k3s kubectl"
 fi
 
-SERVICES=("microservice-quizz-api" "microservice-wordpass-api" "microservice-users-api")
+SERVICES=("microservice-users-api")
 
 echo "=== Synchronizing Prisma schemas for ${ENV} ==="
 

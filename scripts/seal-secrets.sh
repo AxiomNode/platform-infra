@@ -20,8 +20,6 @@ if [[ ! -f "$SECRETS_FILE" ]]; then
   echo "Expected format (key=value pairs):"
   echo "  QUIZZ_DB_USER=quiz"
   echo "  QUIZZ_DB_PASSWORD=secret"
-  echo "  WORDPASS_DB_USER=wordpass"
-  echo "  WORDPASS_DB_PASSWORD=secret"
   echo "  USERS_DB_USER=users"
   echo "  USERS_DB_PASSWORD=secret"
   echo "  FIREBASE_CREDENTIALS=<base64-json>"
@@ -39,7 +37,7 @@ source "$SECRETS_FILE"
 set +a
 
 # --- Database secrets ---
-for svc in quizz wordpass users; do
+for svc in quizz users; do
   SVC_UPPER=$(echo "$svc" | tr '[:lower:]' '[:upper:]')
   USER_VAR="${SVC_UPPER}_DB_USER"
   PASS_VAR="${SVC_UPPER}_DB_PASSWORD"

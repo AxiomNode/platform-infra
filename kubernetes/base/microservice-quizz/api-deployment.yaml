@@ -40,7 +40,7 @@ spec:
           env:
             - name: NODE_ENV
               value: "production"
-            # Selects the game strategy in the merged image; older images ignore it.
+            # Selects the game strategy in the merged image (always set; do not rely on a default).
             - name: GAME_TYPE
               value: "quiz"
             - name: SERVICE_PORT

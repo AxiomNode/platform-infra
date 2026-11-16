@@ -17,18 +17,6 @@ $patch: delete
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: wordpass-db
-$patch: delete
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: wordpass-db
-$patch: delete
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
   name: users-db
 $patch: delete
 ---
